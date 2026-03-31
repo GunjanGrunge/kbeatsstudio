@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "src/app/api/render/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/render/[renderId]/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/s3/**": {
+      "maxDuration": 30
+    },
+    "src/app/api/setup/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}

@@ -1,0 +1,231 @@
+export type OverlayType =
+  | "yt-subscribe"
+  | "yt-like"
+  | "ig-follow"
+  | "lyrics"
+  | "lyrics-chords"
+  | "waveform"
+  | "text"
+  | "image";
+
+export type Platform = "youtube" | "instagram";
+
+export type TemplateFormat =
+  | "video"
+  | "shorts"
+  | "reels"
+  | "stories"
+  | "post-square"
+  | "post-landscape"
+  | "4k";
+
+export interface Template {
+  id: string;
+  name: string;
+  platform: Platform;
+  format: TemplateFormat;
+  width: number;
+  height: number;
+  fps: 30 | 60;
+  description: string;
+  aspectLabel: string; // e.g. "16:9"
+}
+
+export interface FontConfig {
+  family: string;
+  weight: number;
+  size: number;
+  letterSpacing: number;
+  lineHeight: number;
+  align: "left" | "center" | "right";
+}
+
+export interface TextShadowConfig {
+  color: string;
+  blur: number;
+  x: number;
+  y: number;
+}
+
+export interface TextStrokeConfig {
+  color: string;
+  width: number;
+}
+
+export interface LyricLine {
+  text: string;
+  startFrame: number;
+  durationInFrames?: number;
+}
+
+export interface ChordToken {
+  chord: string; // e.g. "Am", "G", "C#m7"
+  charOffset: number; // character position in the lyric text
+}
+
+export interface ChordLine {
+  lyric: string;
+  chords: ChordToken[];
+  startFrame: number;
+  durationInFrames?: number;
+}
+
+export interface OverlayConfig {
+  id: string;
+  type: OverlayType;
+  label: string;
+  visible: boolean;
+  startFrame: number;
+  durationInFrames: number;
+  position: { x: number; y: number }; // 0-100 % of canvas
+  opacity: number; // 0-1
+  // Typography
+  font?: FontConfig;
+  color?: string;
+  gradientColors?: [string, string];
+  textShadow?: TextShadowConfig;
+  textStroke?: TextStrokeConfig;
+  // Overlay-specific
+  lyrics?: LyricLine[];
+  chords?: ChordLine[];
+  // For text overlay
+  text?: string;
+  // For image overlay
+  imageSrc?: string;
+  // For waveform
+  waveformColor?: string;
+  waveformBars?: number;
+  // For CTA overlays
+  channelName?: string;
+  subscriberCount?: string;
+  // Instagram follow
+  username?: string;
+  // Component scale (1 = 100%, applies to CTA overlays)
+  componentScale?: number;
+}
+
+export interface ProjectState {
+  projectId: string;
+  projectName: string;
+  template: Template;
+  audioSrc: string | null; // S3 HTTPS URL
+  videoSrc: string | null; // S3 HTTPS URL
+  durationInFrames: number;
+  overlays: OverlayConfig[];
+  selectedOverlayId: string | null;
+  isDirty: boolean;
+  lastSaved: string | null; // ISO timestamp
+  backgroundColor: string;
+  backgroundOpacity: number; // 0-1
+}
+
+export interface ProjectIndex {
+  id: string;
+  name: string;
+  template: Template;
+  updatedAt: string;
+  thumbnailUrl?: string;
+  audioFileName?: string;
+}
+
+export interface RenderJob {
+  renderId: string;
+  bucketName: string;
+  status: "rendering" | "done" | "error";
+  progress: number; // 0-1
+  outputUrl?: string;
+  error?: string;
+}
+
+// Remotion inputProps shape (passed to KBeatsComposition)
+export interface KBeatsInputProps {
+  audioSrc: string | null;
+  videoSrc: string | null;
+  durationInFrames: number;
+  fps: number;
+  width: number;
+  height: number;
+  backgroundColor: string;
+  backgroundOpacity: number;
+  overlays: OverlayConfig[];
+}
+
+export const TEMPLATES: Template[] = [
+  {
+    id: "yt-1080p",
+    name: "YouTube Video",
+    platform: "youtube",
+    format: "video",
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    description: "Standard HD video for YouTube",
+    aspectLabel: "16:9",
+  },
+  {
+    id: "yt-4k",
+    name: "YouTube 4K",
+    platform: "youtube",
+    format: "4k",
+    width: 3840,
+    height: 2160,
+    fps: 30,
+    description: "Ultra HD 4K video for YouTube",
+    aspectLabel: "16:9",
+  },
+  {
+    id: "yt-shorts",
+    name: "YouTube Shorts",
+    platform: "youtube",
+    format: "shorts",
+    width: 1080,
+    height: 1920,
+    fps: 60,
+    description: "Vertical short-form content",
+    aspectLabel: "9:16",
+  },
+  {
+    id: "ig-square",
+    name: "Instagram Post",
+    platform: "instagram",
+    format: "post-square",
+    width: 1080,
+    height: 1080,
+    fps: 30,
+    description: "Square post for Instagram feed",
+    aspectLabel: "1:1",
+  },
+  {
+    id: "ig-reels",
+    name: "Instagram Reels",
+    platform: "instagram",
+    format: "reels",
+    width: 1080,
+    height: 1920,
+    fps: 60,
+    description: "Vertical Reels format",
+    aspectLabel: "9:16",
+  },
+  {
+    id: "ig-stories",
+    name: "Instagram Stories",
+    platform: "instagram",
+    format: "stories",
+    width: 1080,
+    height: 1920,
+    fps: 60,
+    description: "Ephemeral Stories format",
+    aspectLabel: "9:16",
+  },
+  {
+    id: "ig-landscape",
+    name: "Instagram Landscape",
+    platform: "instagram",
+    format: "post-landscape",
+    width: 1080,
+    height: 608,
+    fps: 30,
+    description: "Landscape post for Instagram feed",
+    aspectLabel: "1.91:1",
+  },
+];
