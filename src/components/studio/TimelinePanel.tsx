@@ -21,6 +21,8 @@ const OVERLAY_ICONS: Record<OverlayType, React.ComponentType<LucideProps>> = {
   "yt-subscribe": PlayCircle,
   "yt-like": PlayCircle,
   "ig-follow": Camera,
+  "ig-like": Camera,
+  "ig-share": Camera,
   lyrics: Music2,
   "lyrics-chords": Music2,
   waveform: Waves,
@@ -32,6 +34,8 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   "yt-subscribe": "#ff4444",
   "yt-like": "#ff4444",
   "ig-follow": "#e1306c",
+  "ig-like": "#ff306c",
+  "ig-share": "#833ab4",
   lyrics: "#ccff00",
   "lyrics-chords": "#a8d400",
   waveform: "#00e5ff",
@@ -227,16 +231,12 @@ export function TimelinePanel({ playerRef }: Props) {
     const onPause = () => setIsPlaying(false);
     // @ts-expect-error remotion player events
     player.addEventListener("frameupdate", onFrame);
-    // @ts-expect-error remotion player events
     player.addEventListener("play", onPlay);
-    // @ts-expect-error remotion player events
     player.addEventListener("pause", onPause);
     return () => {
       // @ts-expect-error remotion player events
       player.removeEventListener("frameupdate", onFrame);
-      // @ts-expect-error remotion player events
       player.removeEventListener("play", onPlay);
-      // @ts-expect-error remotion player events
       player.removeEventListener("pause", onPause);
     };
   }, [playerRef]);

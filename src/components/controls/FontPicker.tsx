@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGoogleFonts } from "@/hooks/useGoogleFonts";
 import { useStudioStore } from "@/store/studioStore";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import type { FontConfig } from "@/types/studio";
-import { getFontWeights } from "@/lib/googleFonts";
+import { getFontWeights, injectGoogleFont } from "@/lib/googleFonts";
 
 interface Props {
   overlayId: string;
@@ -19,11 +18,27 @@ const WEIGHT_LABELS: Record<number, string> = {
   500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black",
 };
 
+// How many fonts to inject for preview when the list opens
+const PREVIEW_BATCH = 60;
+
 export function FontPicker({ overlayId }: Props) {
   const overlay = useStudioStore((s) => s.overlays.find((o) => o.id === overlayId));
   const updateOverlay = useStudioStore((s) => s.updateOverlay);
   const { fonts, loading, search, setSearch, loadFont } = useGoogleFonts();
   const [showList, setShowList] = useState(false);
+  const injectedRef = useRef<Set<string>>(new Set());
+
+  // Inject preview weights for visible fonts whenever the list is open or search changes
+  useEffect(() => {
+    if (!showList) return;
+    const visible = fonts.slice(0, PREVIEW_BATCH);
+    visible.forEach((f) => {
+      if (!injectedRef.current.has(f.family)) {
+        injectGoogleFont(f.family, [400, 700]);
+        injectedRef.current.add(f.family);
+      }
+    });
+  }, [showList, fonts]);
 
   if (!overlay) return null;
 
@@ -50,6 +65,10 @@ export function FontPicker({ overlayId }: Props) {
     setSearch("");
   };
 
+  const handleToggleList = () => {
+    setShowList((v) => !v);
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
@@ -62,7 +81,7 @@ export function FontPicker({ overlayId }: Props) {
         <button
           className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.05)] border border-[#333333] text-white text-xs transition-colors hover:border-[#ccff00]"
           style={{ fontFamily: font.family + ", sans-serif" }}
-          onClick={() => setShowList((v) => !v)}
+          onClick={handleToggleList}
         >
           <span>{font.family}</span>
           <span className="text-[#F7F6E5] text-[10px]">▾</span>
@@ -82,28 +101,60 @@ export function FontPicker({ overlayId }: Props) {
                 style={{ fontFamily: "Outfit, sans-serif" }}
               />
             </div>
-            {/* Font list */}
-            <ScrollArea className="h-48">
+            {/* Font list with preview */}
+            <ScrollArea className="h-64">
               {loading ? (
                 <div className="flex items-center justify-center py-6">
                   <div className="w-4 h-4 border-2 border-[#ccff00] border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
                 <div className="py-1">
-                  {fonts.slice(0, 80).map((f) => (
-                    <button
-                      key={f.family}
-                      className="w-full px-3 py-2 text-left text-xs transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-                      style={{
-                        fontFamily: `${f.family}, sans-serif`,
-                        color: f.family === font.family ? "#ccff00" : "#aaaaaa",
-                        background: f.family === font.family ? "rgba(204,255,0,0.05)" : undefined,
-                      }}
-                      onClick={() => handleFontSelect(f.family)}
-                    >
-                      {f.family}
-                    </button>
-                  ))}
+                  {fonts.slice(0, PREVIEW_BATCH).map((f) => {
+                    const isActive = f.family === font.family;
+                    return (
+                      <button
+                        key={f.family}
+                        className="w-full px-3 py-2.5 text-left transition-colors hover:bg-[rgba(255,255,255,0.04)] flex flex-col gap-0.5"
+                        style={{
+                          background: isActive ? "rgba(204,255,0,0.05)" : undefined,
+                          borderLeft: isActive ? "2px solid #ccff00" : "2px solid transparent",
+                        }}
+                        onClick={() => handleFontSelect(f.family)}
+                      >
+                        {/* Font name in its own face */}
+                        <span
+                          style={{
+                            fontFamily: `'${f.family}', sans-serif`,
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: isActive ? "#ccff00" : "#F7F6E5",
+                            lineHeight: 1.2,
+                            display: "block",
+                          }}
+                        >
+                          {f.family}
+                        </span>
+                        {/* Sample text preview */}
+                        <span
+                          style={{
+                            fontFamily: `'${f.family}', sans-serif`,
+                            fontSize: 11,
+                            fontWeight: 400,
+                            color: isActive ? "rgba(204,255,0,0.6)" : "rgba(247,246,229,0.35)",
+                            lineHeight: 1.3,
+                            display: "block",
+                          }}
+                        >
+                          The quick brown fox
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {fonts.length > PREVIEW_BATCH && (
+                    <p className="px-3 py-2 text-[10px] text-center" style={{ color: "rgba(247,246,229,0.3)", fontFamily: "Outfit, sans-serif" }}>
+                      Refine search to see more fonts
+                    </p>
+                  )}
                 </div>
               )}
             </ScrollArea>

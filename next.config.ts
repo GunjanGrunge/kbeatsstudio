@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Silence the "webpack config but no turbopack config" error; aliases are
+  // handled by Turbopack's module resolution automatically for packages in
+  // transpilePackages, so no explicit resolveAlias is needed.
+  turbopack: {},
 };
 
 export default nextConfig;

@@ -15,6 +15,8 @@ export type OverlayType =
   | "yt-subscribe"
   | "yt-like"
   | "ig-follow"
+  | "ig-like"
+  | "ig-share"
   | "lyrics"
   | "lyrics-chords"
   | "waveform"
@@ -116,6 +118,13 @@ export interface OverlayConfig {
   subscriberCount?: string;
   // Instagram follow
   username?: string;
+  // Instagram Share card
+  shareTitle?: string;
+  shareUsername?: string;
+  shareImageSrc?: string;
+  cardBgColor?: string;
+  cardBorderColor?: string;
+  accentColor?: string;
   // Component scale (1 = 100%, applies to CTA overlays)
   componentScale?: number;
   // Animation style variant — type-specific

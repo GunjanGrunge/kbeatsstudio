@@ -145,6 +145,24 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
         text: "Your text here",
         position: { x: 50, y: 50 },
       };
+    case "ig-like":
+      return {
+        ...base,
+        type,
+        position: { x: 50, y: 80 },
+        color: "#ff306c",
+      };
+    case "ig-share":
+      return {
+        ...base,
+        type,
+        position: { x: 50, y: 78 },
+        shareTitle: "Latest Beat Drop",
+        shareUsername: "@kbeats",
+        cardBgColor: "#0a0a0a",
+        cardBorderColor: "rgba(255,255,255,0.08)",
+        accentColor: "#ccff00",
+      };
     case "image":
       return {
         ...base,
@@ -161,6 +179,8 @@ const OVERLAY_LABELS: Record<OverlayType, string> = {
   "yt-subscribe": "YouTube Subscribe",
   "yt-like": "YouTube Like",
   "ig-follow": "Instagram Follow",
+  "ig-like": "Instagram Like",
+  "ig-share": "Instagram Share",
   lyrics: "Lyrics",
   "lyrics-chords": "Lyrics + Chords",
   waveform: "Waveform",

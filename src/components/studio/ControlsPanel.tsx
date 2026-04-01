@@ -13,6 +13,7 @@ import { WaveformControl } from "@/components/controls/WaveformControl";
 import { CTAControls } from "@/components/controls/CTAControls";
 import { ImageControls } from "@/components/controls/ImageControls";
 import { AnimationVariantControl, LYRICS_VARIANTS, IMAGE_VARIANTS } from "@/components/controls/AnimationVariantControl";
+import { TextStyleEditor } from "@/components/controls/TextStyleEditor";
 import { Slider } from "@/components/ui/slider";
 import { HexColorPicker } from "react-colorful";
 import { useState } from "react";
@@ -83,11 +84,12 @@ export function ControlsPanel() {
   const overlay = useStudioStore((s) => s.overlays.find((o) => o.id === selectedId));
 
   const showTextControls = overlay && ["lyrics", "lyrics-chords", "text"].includes(overlay.type);
-  const showColorControls = overlay && overlay.type !== "waveform";
+  const showTextStyleEditor = overlay?.type === "text";
+  const showColorControls = overlay && overlay.type !== "waveform" && overlay.type !== "text";
   const showLyricsEditor = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
   const showLyricsAnimation = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
   const showWaveformControls = overlay?.type === "waveform";
-  const showCTAControls = overlay && ["yt-subscribe", "yt-like", "ig-follow", "text"].includes(overlay.type);
+  const showCTAControls = overlay && ["yt-subscribe", "yt-like", "ig-follow", "ig-like", "ig-report", "ig-share", "text"].includes(overlay.type);
   const showImageControls = overlay?.type === "image";
   const showImageAnimation = overlay?.type === "image";
 
@@ -195,7 +197,14 @@ export function ControlsPanel() {
                 </div>
               )}
 
-              {/* Color */}
+              {/* Text style editor (color, gradient, shadow, stroke) for text overlays */}
+              {showTextStyleEditor && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <TextStyleEditor overlayId={overlay.id} />
+                </div>
+              )}
+
+              {/* Color (non-text, non-waveform overlays) */}
               {showColorControls && (
                 <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
                   <ColorPickerControl overlayId={overlay.id} />

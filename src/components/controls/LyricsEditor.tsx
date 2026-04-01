@@ -56,6 +56,7 @@ function LineEditor({
   overlayColor,
   overlayFont,
   onUpdate,
+  currentFrame,
 }: {
   line: LyricLine;
   lineIndex: number;

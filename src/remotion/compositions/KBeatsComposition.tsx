@@ -8,6 +8,8 @@ import { LyricsWithChords } from "../overlays/LyricsWithChords";
 import { YouTubeSubscribe } from "../overlays/YouTubeSubscribe";
 import { YouTubeLike } from "../overlays/YouTubeLike";
 import { InstagramFollow } from "../overlays/InstagramFollow";
+import { InstagramLike } from "../overlays/InstagramLike";
+import { InstagramShare } from "../overlays/InstagramShare";
 import { TextOverlay } from "../overlays/TextOverlay";
 import { ImageOverlay } from "../overlays/ImageOverlay";
 
@@ -28,6 +30,10 @@ function OverlayRenderer({ overlay, audioSrc }: { overlay: OverlayConfig; audioS
       return <YouTubeLike overlay={overlay} />;
     case "ig-follow":
       return <InstagramFollow overlay={overlay} />;
+    case "ig-like":
+      return <InstagramLike overlay={overlay} />;
+    case "ig-share":
+      return <InstagramShare overlay={overlay} />;
     case "text":
       return <TextOverlay overlay={overlay} />;
     case "image":
