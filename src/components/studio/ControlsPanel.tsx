@@ -11,6 +11,8 @@ import { FontPicker } from "@/components/controls/FontPicker";
 import { LyricsEditor } from "@/components/controls/LyricsEditor";
 import { WaveformControl } from "@/components/controls/WaveformControl";
 import { CTAControls } from "@/components/controls/CTAControls";
+import { ImageControls } from "@/components/controls/ImageControls";
+import { AnimationVariantControl, LYRICS_VARIANTS, IMAGE_VARIANTS } from "@/components/controls/AnimationVariantControl";
 import { Slider } from "@/components/ui/slider";
 import { HexColorPicker } from "react-colorful";
 import { useState } from "react";
@@ -26,12 +28,12 @@ function BackgroundControls() {
 
   return (
     <div className="space-y-4 px-4 py-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
         Background
       </p>
 
       <div className="space-y-2">
-        <p className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>Background Color</p>
+        <p className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Background Color</p>
         <div className="flex items-center gap-2">
           <button
             className="w-8 h-8 rounded-lg border border-[rgba(255,255,255,0.1)] shrink-0"
@@ -62,7 +64,7 @@ function BackgroundControls() {
       </div>
 
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>Background Opacity</span>
           <span>{Math.round(backgroundOpacity * 100)}%</span>
         </div>
@@ -83,14 +85,17 @@ export function ControlsPanel() {
   const showTextControls = overlay && ["lyrics", "lyrics-chords", "text"].includes(overlay.type);
   const showColorControls = overlay && overlay.type !== "waveform";
   const showLyricsEditor = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
+  const showLyricsAnimation = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
   const showWaveformControls = overlay?.type === "waveform";
   const showCTAControls = overlay && ["yt-subscribe", "yt-like", "ig-follow", "text"].includes(overlay.type);
+  const showImageControls = overlay?.type === "image";
+  const showImageAnimation = overlay?.type === "image";
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#0d0d0d", minHeight: 0 }}>
       {/* Panel title */}
       <div className="flex items-center px-4 py-3 border-b shrink-0" style={{ borderColor: "#222222" }}>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
           {overlay ? overlay.label : "Properties"}
         </p>
       </div>
@@ -109,7 +114,7 @@ export function ControlsPanel() {
               <Separator className="bg-[#1a1a1c]" />
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-2">
                 <div className="w-8 h-px bg-[#1a1a1c] mb-2" />
-                <p className="text-xs text-[#444444]" style={{ fontFamily: "Outfit, sans-serif" }}>
+                <p className="text-xs text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
                   Select a layer to edit its properties.
                 </p>
               </div>
@@ -138,6 +143,25 @@ export function ControlsPanel() {
                 <OpacityControl overlayId={overlay.id} />
               </div>
 
+              {/* Image / logo controls */}
+              {showImageControls && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <ImageControls overlayId={overlay.id} />
+                </div>
+              )}
+
+              {/* Image animation style */}
+              {showImageAnimation && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <AnimationVariantControl
+                    overlayId={overlay.id}
+                    variants={IMAGE_VARIANTS}
+                    defaultVariant="none"
+                    sectionLabel="Animation Style"
+                  />
+                </div>
+              )}
+
               {/* CTA-specific inputs (channel name, username, text content) */}
               {showCTAControls && (
                 <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
@@ -156,6 +180,18 @@ export function ControlsPanel() {
               {showLyricsEditor && (
                 <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
                   <LyricsEditor overlayId={overlay.id} />
+                </div>
+              )}
+
+              {/* Lyrics animation style */}
+              {showLyricsAnimation && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <AnimationVariantControl
+                    overlayId={overlay.id}
+                    variants={LYRICS_VARIANTS}
+                    defaultVariant="fade-slide"
+                    sectionLabel="Animation Style"
+                  />
                 </div>
               )}
 

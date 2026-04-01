@@ -144,7 +144,7 @@ export function UploadZone() {
           {uploading ? (
             <>
               <div className="w-6 h-6 border-2 border-[#ccff00] border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-[#888888]" style={{ fontFamily: "Outfit, sans-serif" }}>
+              <span className="text-xs text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
                 Uploading... {uploadProgress}%
               </span>
               <div className="w-full h-1 bg-[#222222] rounded-full overflow-hidden">
@@ -157,7 +157,7 @@ export function UploadZone() {
           ) : (
             <>
               <Upload size={18} className={dragging ? "text-[#ccff00]" : "text-[#555555]"} />
-              <p className="text-xs text-[#888888] text-center" style={{ fontFamily: "Outfit, sans-serif" }}>
+              <p className="text-xs text-[#F7F6E5] text-center" style={{ fontFamily: "Outfit, sans-serif" }}>
                 Drop MP3 / MP4 here
               </p>
               <p className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>

@@ -17,11 +17,11 @@ export function OpacityControl({ overlayId }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
         Opacity
       </p>
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>Opacity</span>
           <span>{Math.round(opacity * 100)}%</span>
         </div>

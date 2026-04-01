@@ -52,27 +52,27 @@ export function FontPicker({ overlayId }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
         Typography
       </p>
 
       {/* Font family selector */}
       <div className="space-y-1.5">
-        <p className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>Font Family</p>
+        <p className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Font Family</p>
         <button
           className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.05)] border border-[#333333] text-white text-xs transition-colors hover:border-[#ccff00]"
           style={{ fontFamily: font.family + ", sans-serif" }}
           onClick={() => setShowList((v) => !v)}
         >
           <span>{font.family}</span>
-          <span className="text-[#555555] text-[10px]">▾</span>
+          <span className="text-[#F7F6E5] text-[10px]">▾</span>
         </button>
 
         {showList && (
           <div className="rounded-xl border border-[#333333] overflow-hidden" style={{ background: "#141414" }}>
             {/* Search */}
             <div className="flex items-center gap-2 px-3 py-2 border-b border-[#222222]">
-              <Search size={12} className="text-[#555555] shrink-0" />
+              <Search size={12} className="text-[#F7F6E5] shrink-0" />
               <input
                 autoFocus
                 value={search}
@@ -113,7 +113,7 @@ export function FontPicker({ overlayId }: Props) {
 
       {/* Font weight */}
       <div className="space-y-1.5">
-        <p className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>Weight</p>
+        <p className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Weight</p>
         <div className="flex flex-wrap gap-1">
           {availableWeights.map((w) => (
             <button
@@ -136,7 +136,7 @@ export function FontPicker({ overlayId }: Props) {
 
       {/* Font size */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>Size</span>
           <span>{font.size}px</span>
         </div>
@@ -149,7 +149,7 @@ export function FontPicker({ overlayId }: Props) {
 
       {/* Letter spacing */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>Letter Spacing</span>
           <span>{font.letterSpacing}px</span>
         </div>
@@ -162,7 +162,7 @@ export function FontPicker({ overlayId }: Props) {
 
       {/* Line height */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>Line Height</span>
           <span>{font.lineHeight.toFixed(1)}</span>
         </div>
@@ -175,7 +175,7 @@ export function FontPicker({ overlayId }: Props) {
 
       {/* Alignment */}
       <div className="space-y-1.5">
-        <p className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>Alignment</p>
+        <p className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Alignment</p>
         <div className="flex gap-1">
           {(["left", "center", "right"] as const).map((align) => {
             const Icon = align === "left" ? AlignLeft : align === "center" ? AlignCenter : AlignRight;

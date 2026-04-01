@@ -10,6 +10,7 @@ import { UploadZone } from "./UploadZone";
 import { PreviewPanel } from "./PreviewPanel";
 import { ControlsPanel } from "./ControlsPanel";
 import { ExportModal } from "./ExportModal";
+import { TimelinePanel } from "./TimelinePanel";
 import type { ProjectState } from "@/types/studio";
 
 interface Props {
@@ -56,29 +57,35 @@ export function StudioShell({ projectId, initialState }: Props) {
       {/* Top bar */}
       <ProjectHeader onExport={() => setExportOpen(true)} />
 
-      {/* 3-pane layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar: media + overlay list */}
-        <aside
-          className="flex flex-col border-r shrink-0"
-          style={{ width: 240, borderColor: "#1a1a1c", background: "#0d0d0d", minHeight: 0 }}
-        >
-          <UploadZone />
-          <OverlayList />
-        </aside>
+      {/* Main area: 3-pane + bottom timeline */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* 3-pane row */}
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {/* Left sidebar: media + overlay list */}
+          <aside
+            className="flex flex-col border-r shrink-0"
+            style={{ width: 240, borderColor: "#1a1a1c", background: "#0d0d0d", minHeight: 0 }}
+          >
+            <UploadZone />
+            <OverlayList />
+          </aside>
 
-        {/* Center: preview */}
-        <main className="flex-1 min-w-0 overflow-hidden">
-          <PreviewPanel playerRef={playerRef} />
-        </main>
+          {/* Center: preview */}
+          <main className="flex-1 min-w-0 overflow-hidden">
+            <PreviewPanel playerRef={playerRef} />
+          </main>
 
-        {/* Right: controls */}
-        <aside
-          className="flex flex-col border-l shrink-0"
-          style={{ width: 300, borderColor: "#1a1a1c", minHeight: 0 }}
-        >
-          <ControlsPanel />
-        </aside>
+          {/* Right: controls */}
+          <aside
+            className="flex flex-col border-l shrink-0"
+            style={{ width: 300, borderColor: "#1a1a1c", minHeight: 0 }}
+          >
+            <ControlsPanel />
+          </aside>
+        </div>
+
+        {/* Bottom timeline */}
+        <TimelinePanel playerRef={playerRef} />
       </div>
 
       {/* Export modal */}

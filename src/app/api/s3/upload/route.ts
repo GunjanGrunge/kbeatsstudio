@@ -21,11 +21,12 @@ const ALLOWED_TYPES: Record<string, string> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { projectId, fileName, contentType, fileType } = body as {
+    const { projectId, fileName, contentType, fileType, uniqueKey } = body as {
       projectId: string;
       fileName: string;
       contentType: string;
       fileType: "audio" | "video" | "image";
+      uniqueKey?: string;
     };
 
     if (!projectId || !contentType) {
@@ -37,7 +38,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
     }
 
-    const key = `projects/${projectId}/${fileType}.${ext}`;
+    const key = uniqueKey
+      ? `projects/${projectId}/${uniqueKey}.${ext}`
+      : `projects/${projectId}/${fileType}.${ext}`;
     const uploadUrl = await getPresignedUploadUrl(key, contentType);
     const publicUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 

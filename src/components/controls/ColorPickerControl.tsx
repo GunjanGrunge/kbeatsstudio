@@ -38,7 +38,7 @@ export function ColorPickerControl({ overlayId }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
         Color
       </p>
 
@@ -57,7 +57,7 @@ export function ColorPickerControl({ overlayId }: Props) {
           maxLength={7}
         />
         <button
-          className="text-[#555555] hover:text-white transition-colors"
+          className="text-[#F7F6E5] hover:text-white transition-colors"
           onClick={() => setShowPicker((v) => !v)}
         >
           <ChevronDown size={14} className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
@@ -97,7 +97,7 @@ export function ColorPickerControl({ overlayId }: Props) {
         <TabsContent value="palettes" className="mt-2 space-y-2">
           {COLOR_PALETTES.slice(0, 6).map((palette) => (
             <div key={palette.id}>
-              <p className="text-[9px] text-[#555555] mb-1" style={{ fontFamily: "Outfit, sans-serif" }}>
+              <p className="text-[9px] text-[#F7F6E5] mb-1" style={{ fontFamily: "Outfit, sans-serif" }}>
                 {palette.name}
               </p>
               <div className="flex gap-1">

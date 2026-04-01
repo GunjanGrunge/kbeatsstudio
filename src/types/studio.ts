@@ -1,3 +1,16 @@
+export type SubscribeVariant = "slide-up" | "bounce-in" | "pop" | "typewriter" | "click";
+export type LikeVariant      = "pulse" | "heart-pop" | "bounce" | "click";
+export type LyricsVariant    = "fade-slide" | "color-fill" | "typewriter" | "typewriter-fill" | "word-pop" | "glow-pulse";
+export type ImageVariant     = "none" | "float" | "pulse" | "spin" | "bounce-in" | "slide-in-left" | "zoom-in";
+
+export interface WordStyle {
+  wordIndex: number;    // 0-based index into the word array of line.text
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;       // hex override for this word
+  scale?: number;       // e.g. 1.3 = 30% bigger
+}
+
 export type OverlayType =
   | "yt-subscribe"
   | "yt-like"
@@ -56,6 +69,8 @@ export interface LyricLine {
   text: string;
   startFrame: number;
   durationInFrames?: number;
+  animationVariant?: LyricsVariant;
+  wordStyles?: WordStyle[];
 }
 
 export interface ChordToken {
@@ -95,6 +110,7 @@ export interface OverlayConfig {
   // For waveform
   waveformColor?: string;
   waveformBars?: number;
+  waveformStyle?: "bars" | "wave" | "circular" | "particles" | "oscilloscope";
   // For CTA overlays
   channelName?: string;
   subscriberCount?: string;
@@ -102,6 +118,8 @@ export interface OverlayConfig {
   username?: string;
   // Component scale (1 = 100%, applies to CTA overlays)
   componentScale?: number;
+  // Animation style variant — type-specific
+  animationVariant?: SubscribeVariant | LikeVariant | LyricsVariant | ImageVariant;
 }
 
 export interface ProjectState {

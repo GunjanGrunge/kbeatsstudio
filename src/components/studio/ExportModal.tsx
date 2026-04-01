@@ -124,7 +124,7 @@ export function ExportModal({ open, onClose }: Props) {
                     <span className="text-sm font-bold text-white" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "0.75rem" }}>
                       {r.label}
                     </span>
-                    <span className="text-[10px] text-[#888888]" style={{ fontFamily: "Outfit, sans-serif" }}>
+                    <span className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
                       {isVertical && r.id === "4k" ? "2160×3840" : isVertical ? "1080×1920" : `${r.width}×${r.height}`}
                     </span>
                     {r.note && (
@@ -165,7 +165,7 @@ export function ExportModal({ open, onClose }: Props) {
                     <Loader2 size={16} className="text-[#ccff00] animate-spin shrink-0" />
                     <div className="flex-1 space-y-1">
                       <div className="flex justify-between text-[10px]" style={{ fontFamily: "Outfit, sans-serif" }}>
-                        <span className="text-[#888888]">Rendering...</span>
+                        <span className="text-[#F7F6E5]">Rendering...</span>
                         <span className="text-white">{Math.round(renderProgress.progress * 100)}%</span>
                       </div>
                       <Progress value={renderProgress.progress * 100} className="h-1.5" />
@@ -225,7 +225,7 @@ export function ExportModal({ open, onClose }: Props) {
             <button
               className="w-full py-3 rounded-xl text-[#050505] font-bold transition-all duration-200 flex items-center justify-center gap-2"
               style={{
-                background: starting ? "#888888" : "#ccff00",
+                background: starting ? "#F7F6E5" : "#ccff00",
                 fontFamily: "Unbounded, sans-serif",
                 fontSize: "0.65rem",
                 letterSpacing: "0.1em",

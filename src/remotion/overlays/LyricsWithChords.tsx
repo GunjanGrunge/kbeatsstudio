@@ -1,5 +1,6 @@
 import { useCurrentFrame, interpolate } from "remotion";
-import type { OverlayConfig, ChordLine, ChordToken } from "@/types/studio";
+import type { OverlayConfig, ChordLine } from "@/types/studio";
+import type { LyricsVariant } from "@/types/studio";
 
 interface Props {
   overlay: OverlayConfig;
@@ -9,10 +10,12 @@ function ChordLineRenderer({
   line,
   relativeFrame,
   overlay,
+  variant,
 }: {
   line: ChordLine;
   relativeFrame: number;
   overlay: OverlayConfig;
+  variant: LyricsVariant;
 }) {
   const duration = line.durationInFrames ?? 90;
   const fadeIn = interpolate(relativeFrame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
@@ -25,9 +28,31 @@ function ChordLineRenderer({
   const chordSize = Math.round(lyricSize * 0.5);
   const lyricColor = overlay.color ?? "#ffffff";
   const chordColor = "#ccff00";
+  const charWidth = lyricSize * 0.55;
 
-  // Build character-by-character positions for chord placement
-  const charWidth = lyricSize * 0.55; // approximate monospace-ish width
+  const sharedLyricStyle: React.CSSProperties = {
+    fontFamily: `${font?.family ?? "Outfit"}, sans-serif`,
+    fontSize: lyricSize,
+    fontWeight: font?.weight ?? 700,
+    letterSpacing: font?.letterSpacing ?? 0,
+    lineHeight: 1.2,
+    textShadow: overlay.textShadow
+      ? `${overlay.textShadow.x}px ${overlay.textShadow.y}px ${overlay.textShadow.blur}px ${overlay.textShadow.color}`
+      : "0 2px 20px rgba(0,0,0,0.8)",
+    WebkitTextStroke: overlay.textStroke
+      ? `${overlay.textStroke.width}px ${overlay.textStroke.color}`
+      : undefined,
+    whiteSpace: "nowrap",
+  };
+
+  // color-fill: two-layer karaoke on the lyric text
+  const fillPercent =
+    variant === "color-fill"
+      ? interpolate(relativeFrame, [10, duration - 10], [0, 100], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+      : 100;
 
   return (
     <div
@@ -39,7 +64,7 @@ function ChordLineRenderer({
         padding: `${chordSize + 12}px 32px 0`,
       }}
     >
-      {/* Chord names positioned above */}
+      {/* Chord names — always #ccff00, never affected by fill */}
       {line.chords.map((ct, i) => (
         <span
           key={i}
@@ -61,24 +86,28 @@ function ChordLineRenderer({
       ))}
 
       {/* Lyric text */}
-      <span
-        style={{
-          fontFamily: `${font?.family ?? "Outfit"}, sans-serif`,
-          fontSize: lyricSize,
-          fontWeight: font?.weight ?? 700,
-          color: lyricColor,
-          letterSpacing: font?.letterSpacing ?? 0,
-          lineHeight: 1.2,
-          textShadow: overlay.textShadow
-            ? `${overlay.textShadow.x}px ${overlay.textShadow.y}px ${overlay.textShadow.blur}px ${overlay.textShadow.color}`
-            : "0 2px 20px rgba(0,0,0,0.8)",
-          WebkitTextStroke: overlay.textStroke
-            ? `${overlay.textStroke.width}px ${overlay.textStroke.color}`
-            : undefined,
-        }}
-      >
-        {line.lyric}
-      </span>
+      {variant === "color-fill" ? (
+        <span style={{ position: "relative", display: "inline-block" }}>
+          {/* Grey base */}
+          <span style={{ ...sharedLyricStyle, color: "#F7F6E5" }}>{line.lyric}</span>
+          {/* Color fill layer */}
+          <span
+            style={{
+              ...sharedLyricStyle,
+              color: lyricColor,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              overflow: "hidden",
+              width: `${fillPercent}%`,
+            }}
+          >
+            {line.lyric}
+          </span>
+        </span>
+      ) : (
+        <span style={{ ...sharedLyricStyle, color: lyricColor }}>{line.lyric}</span>
+      )}
     </div>
   );
 }
@@ -88,6 +117,7 @@ export function LyricsWithChords({ overlay }: Props) {
   const lines = overlay.chords ?? [];
   const overlayOpacity = overlay.opacity ?? 1;
   const align = overlay.font?.align ?? "center";
+  const variant = (overlay.animationVariant ?? "fade-slide") as LyricsVariant;
 
   return (
     <div
@@ -114,6 +144,7 @@ export function LyricsWithChords({ overlay }: Props) {
             line={line}
             relativeFrame={relFrame}
             overlay={overlay}
+            variant={variant}
           />
         );
       })}

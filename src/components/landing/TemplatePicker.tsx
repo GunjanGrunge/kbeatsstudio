@@ -127,7 +127,7 @@ function TemplateCard({
             className={isHovered || isSelected ? "text-[#ccff00]" : "text-white"}
             style={{ transition: "color 0.3s" }}
           />
-          <span className="text-[10px] text-[#888888] font-mono">{template.width}×{template.height}</span>
+          <span className="text-[10px] text-[#F7F6E5] font-mono">{template.width}×{template.height}</span>
         </div>
       </div>
 
@@ -138,7 +138,7 @@ function TemplateCard({
         >
           {template.name}
         </p>
-        <p className="text-[10px] text-[#888888]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <p className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           {template.description}
         </p>
       </div>
@@ -146,13 +146,13 @@ function TemplateCard({
       <div className="flex items-center gap-1.5 flex-wrap">
         <Badge
           variant="outline"
-          className="text-[9px] px-1.5 py-0 border-[rgba(255,255,255,0.1)] text-[#888888] font-mono"
+          className="text-[9px] px-1.5 py-0 border-[rgba(255,255,255,0.1)] text-[#F7F6E5] font-mono"
         >
           {template.aspectLabel}
         </Badge>
         <Badge
           variant="outline"
-          className="text-[9px] px-1.5 py-0 border-[rgba(255,255,255,0.1)] text-[#888888] font-mono"
+          className="text-[9px] px-1.5 py-0 border-[rgba(255,255,255,0.1)] text-[#F7F6E5] font-mono"
         >
           {template.fps}fps
         </Badge>

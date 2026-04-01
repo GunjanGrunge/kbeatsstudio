@@ -53,7 +53,7 @@ export default function HomePage() {
             BEATS
           </span>
           <span
-            className="ml-2 text-xs text-[#888888] tracking-[0.15em] uppercase"
+            className="ml-2 text-xs text-[#F7F6E5] tracking-[0.15em] uppercase"
             style={{ fontFamily: "Outfit, sans-serif", fontWeight: 300 }}
           >
             Studio
@@ -61,7 +61,7 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-[#ccff00]" />
-          <span className="text-xs text-[#888888]" style={{ fontFamily: "Outfit, sans-serif" }}>
+          <span className="text-xs text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
             Music Channel Production
           </span>
         </div>
@@ -90,7 +90,7 @@ export default function HomePage() {
             Drop.
           </h1>
           <p
-            className="text-[#888888] text-base md:text-lg max-w-lg mx-auto"
+            className="text-[#F7F6E5] text-base md:text-lg max-w-lg mx-auto"
             style={{ fontFamily: "Outfit, sans-serif", fontWeight: 300 }}
           >
             Build animated overlays for your music videos — lyrics, chords, subscribe CTAs, waveforms — then export in 4K.
@@ -134,7 +134,7 @@ export default function HomePage() {
             </button>
           ) : (
             <button
-              className="text-xs text-[#888888] hover:text-white transition-colors duration-200"
+              className="text-xs text-[#F7F6E5] hover:text-white transition-colors duration-200"
               style={{ fontFamily: "Outfit, sans-serif" }}
               onClick={() => setShowPicker(false)}
             >
@@ -153,7 +153,7 @@ export default function HomePage() {
           >
             <div className="text-center mb-8">
               <p
-                className="text-xs uppercase tracking-[0.2em] text-[#888888] mb-2"
+                className="text-xs uppercase tracking-[0.2em] text-[#F7F6E5] mb-2"
                 style={{ fontFamily: "Unbounded, sans-serif" }}
               >
                 Choose a Template
@@ -162,7 +162,7 @@ export default function HomePage() {
             {creating ? (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
                 <div className="w-8 h-8 border-2 border-[#ccff00] border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-[#888888]" style={{ fontFamily: "Outfit, sans-serif" }}>
+                <p className="text-sm text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
                   Creating your project...
                 </p>
               </div>

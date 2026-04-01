@@ -51,7 +51,7 @@ export function ProjectHeader({ onExport }: Props) {
       {/* Left: Back + Logo + Project name */}
       <div className="flex items-center gap-4 min-w-0">
         <button
-          className="text-[#888888] hover:text-white transition-colors duration-200 p-1 rounded shrink-0"
+          className="text-[#F7F6E5] hover:text-white transition-colors duration-200 p-1 rounded shrink-0"
           onClick={() => router.push("/")}
         >
           <ArrowLeft size={16} />
@@ -86,19 +86,19 @@ export function ProjectHeader({ onExport }: Props) {
             onClick={() => { setEditing(true); setEditValue(projectName); }}
           >
             <span className="truncate max-w-[160px]">{projectName}</span>
-            <Pencil size={11} className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[#888888] shrink-0" />
+            <Pencil size={11} className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[#F7F6E5] shrink-0" />
           </button>
         )}
 
         {/* Template switcher */}
         <div className="relative shrink-0">
           <button
-            className="flex items-center gap-1.5 text-[10px] text-[#888888] hover:text-white px-2 py-1 rounded-full border border-[#222222] hover:border-[#444444] transition-all duration-200"
+            className="flex items-center gap-1.5 text-[10px] text-[#F7F6E5] hover:text-white px-2 py-1 rounded-full border border-[#222222] hover:border-[#444444] transition-all duration-200"
             style={{ fontFamily: "Outfit, sans-serif" }}
             onClick={() => setShowTemplatePicker((v) => !v)}
           >
             <span className="font-mono">{template.width}×{template.height}</span>
-            <span className="text-[#555555]">·</span>
+            <span className="text-[#F7F6E5]">·</span>
             <span>{template.fps}fps</span>
             <ChevronDown size={11} className={`transition-transform duration-200 ${showTemplatePicker ? "rotate-180" : ""}`} />
           </button>
@@ -149,7 +149,7 @@ export function ProjectHeader({ onExport }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-1.5 text-[#888888]"
+              className="flex items-center gap-1.5 text-[#F7F6E5]"
               style={{ fontFamily: "Outfit, sans-serif", fontSize: 11 }}
             >
               <Loader2 size={11} className="animate-spin" />

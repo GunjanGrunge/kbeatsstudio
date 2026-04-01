@@ -8,7 +8,7 @@ export const COLOR_PALETTES: ColorPalette[] = [
   {
     id: "kbeats",
     name: "KBeats Brand",
-    colors: ["#ccff00", "#050505", "#1a1a1c", "#ffffff", "#888888", "#b3e600"],
+    colors: ["#ccff00", "#050505", "#1a1a1c", "#ffffff", "#F7F6E5", "#b3e600"],
   },
   {
     id: "neon",
@@ -82,5 +82,5 @@ export const TAILWIND_SWATCHES = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16",
   "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#3b82f6",
   "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#f43f5e",
-  "#ffffff", "#ccff00", "#000000", "#1a1a1c", "#888888",
+  "#ffffff", "#ccff00", "#000000", "#1a1a1c", "#F7F6E5",
 ];

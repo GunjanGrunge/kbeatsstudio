@@ -59,7 +59,7 @@ export function ProjectList({ onOpen }: Props) {
 
   if (projects.length === 0) {
     return (
-      <div className="text-center py-8 text-[#888888]" style={{ fontFamily: "Outfit, sans-serif" }}>
+      <div className="text-center py-8 text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
         <FolderOpen size={32} className="mx-auto mb-2 opacity-30" />
         <p className="text-sm">No saved projects yet.</p>
         <p className="text-xs mt-1">Pick a template above to start.</p>
@@ -103,11 +103,11 @@ export function ProjectList({ onOpen }: Props) {
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1">
                   <PlatformIcon platform={p.template.platform} />
-                  <span className="text-[10px] text-[#888888]">{p.template.name}</span>
+                  <span className="text-[10px] text-[#F7F6E5]">{p.template.name}</span>
                 </div>
                 <Badge
                   variant="outline"
-                  className="text-[9px] px-1.5 py-0 border-[rgba(255,255,255,0.1)] text-[#888888] font-mono"
+                  className="text-[9px] px-1.5 py-0 border-[rgba(255,255,255,0.1)] text-[#F7F6E5] font-mono"
                 >
                   {p.template.width}×{p.template.height}
                 </Badge>

@@ -25,7 +25,7 @@ export function PositionControl({ overlayId }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
         Position
       </p>
 
@@ -54,7 +54,7 @@ export function PositionControl({ overlayId }: Props) {
 
       {/* X slider */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>X Position</span>
           <span>{Math.round(x)}%</span>
         </div>
@@ -67,7 +67,7 @@ export function PositionControl({ overlayId }: Props) {
 
       {/* Y slider */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>Y Position</span>
           <span>{Math.round(y)}%</span>
         </div>

@@ -9,12 +9,14 @@ import { YouTubeSubscribe } from "../overlays/YouTubeSubscribe";
 import { YouTubeLike } from "../overlays/YouTubeLike";
 import { InstagramFollow } from "../overlays/InstagramFollow";
 import { TextOverlay } from "../overlays/TextOverlay";
+import { ImageOverlay } from "../overlays/ImageOverlay";
 
 function OverlayRenderer({ overlay, audioSrc }: { overlay: OverlayConfig; audioSrc: string | null }) {
   if (!overlay.visible) return null;
 
   switch (overlay.type) {
     case "waveform":
+      if (!audioSrc) return null;
       return <WaveformVisualizer overlay={overlay} audioSrc={audioSrc} />;
     case "lyrics":
       return <LyricsDisplay overlay={overlay} />;
@@ -28,6 +30,8 @@ function OverlayRenderer({ overlay, audioSrc }: { overlay: OverlayConfig; audioS
       return <InstagramFollow overlay={overlay} />;
     case "text":
       return <TextOverlay overlay={overlay} />;
+    case "image":
+      return <ImageOverlay overlay={overlay} />;
     default:
       return null;
   }

@@ -19,6 +19,10 @@ interface StudioActions {
   setBackgroundOpacity: (opacity: number) => void;
   markSaved: () => void;
 
+  // Playhead (UI-only, not persisted)
+  currentFrame: number;
+  setCurrentFrame: (frame: number) => void;
+
   // Overlays
   addOverlay: (type: OverlayType) => void;
   updateOverlay: (id: string, patch: Partial<OverlayConfig>) => void;
@@ -76,6 +80,7 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
         position: { x: 50, y: 85 },
         channelName: "KBeats",
         color: "#ffffff",
+        animationVariant: "slide-up" as const,
       };
     case "yt-like":
       return {
@@ -83,6 +88,7 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
         type,
         position: { x: 85, y: 85 },
         color: "#ffffff",
+        animationVariant: "pulse" as const,
       };
     case "ig-follow":
       return {
@@ -103,6 +109,7 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
         ],
         font: { ...base.font!, size: 56 },
         color: "#ffffff",
+        animationVariant: "fade-slide" as const,
       };
     case "lyrics-chords":
       return {
@@ -119,6 +126,7 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
         ],
         font: { ...base.font!, size: 48 },
         color: "#ffffff",
+        animationVariant: "fade-slide" as const,
       };
     case "waveform":
       return {
@@ -142,6 +150,7 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
         ...base,
         type,
         position: { x: 50, y: 50 },
+        animationVariant: "none" as const,
       };
     default:
       return { ...base, type };
@@ -163,6 +172,13 @@ export const useStudioStore = create<StudioStore>()(
   persist(
     immer((set, get) => ({
       ...DEFAULT_STATE,
+
+      // UI-only playhead state (not persisted)
+      currentFrame: 0,
+      setCurrentFrame: (frame: number) =>
+        set((state) => {
+          (state as unknown as { currentFrame: number }).currentFrame = frame;
+        }),
 
       initProject: (projectId, template) =>
         set((state) => {

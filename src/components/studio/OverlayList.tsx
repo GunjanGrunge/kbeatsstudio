@@ -27,8 +27,8 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   lyrics: "#ccff00",
   "lyrics-chords": "#ccff00",
   waveform: "#ccff00",
-  text: "#888888",
-  image: "#888888",
+  text: "#F7F6E5",
+  image: "#F7F6E5",
 };
 
 function OverlayItem({ overlay, isSelected }: { overlay: OverlayConfig; isSelected: boolean }) {
@@ -88,7 +88,7 @@ function OverlayItem({ overlay, isSelected }: { overlay: OverlayConfig; isSelect
 
         <button
           className="p-1 rounded transition-colors"
-          style={{ color: overlay.visible ? "#888888" : "#333333" }}
+          style={{ color: overlay.visible ? "#F7F6E5" : "#333333" }}
           onClick={(e) => { e.stopPropagation(); toggleVisibility(overlay.id); }}
         >
           {overlay.visible ? <Eye size={11} /> : <EyeOff size={11} />}
@@ -120,6 +120,7 @@ export function OverlayList() {
     { type: "lyrics-chords", label: "Lyrics + Chords" },
     { type: "waveform", label: "Waveform" },
     { type: "text", label: "Text" },
+    { type: "image", label: "Image / Logo" },
   ];
 
   const handleReorder = (newOrder: OverlayConfig[]) => {

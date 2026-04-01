@@ -4,6 +4,7 @@ import { useStudioStore } from "@/store/studioStore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { AnimationVariantControl, SUBSCRIBE_VARIANTS, LIKE_VARIANTS } from "@/components/controls/AnimationVariantControl";
 
 interface Props {
   overlayId: string;
@@ -16,7 +17,7 @@ function ScaleControl({ overlayId }: { overlayId: string }) {
   const scale = overlay.componentScale ?? 1;
   return (
     <div className="space-y-1.5">
-      <div className="flex justify-between text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+      <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
         <span>Size</span>
         <span>{Math.round(scale * 100)}%</span>
       </div>
@@ -55,11 +56,11 @@ export function CTAControls({ overlayId }: Props) {
   if (overlay.type === "yt-subscribe") {
     return (
       <div className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
           Subscribe CTA
         </p>
         <div className="space-y-1">
-          <Label className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>Channel Name</Label>
+          <Label className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Channel Name</Label>
           <Input
             value={overlay.channelName ?? ""}
             onChange={(e) => updateOverlay(overlayId, { channelName: e.target.value })}
@@ -68,6 +69,12 @@ export function CTAControls({ overlayId }: Props) {
             style={{ fontFamily: "Outfit, sans-serif" }}
           />
         </div>
+        <AnimationVariantControl
+          overlayId={overlayId}
+          variants={SUBSCRIBE_VARIANTS}
+          defaultVariant="slide-up"
+          sectionLabel="Entrance Style"
+        />
         <ScaleControl overlayId={overlayId} />
       </div>
     );
@@ -76,9 +83,15 @@ export function CTAControls({ overlayId }: Props) {
   if (overlay.type === "yt-like") {
     return (
       <div className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
           Like CTA
         </p>
+        <AnimationVariantControl
+          overlayId={overlayId}
+          variants={LIKE_VARIANTS}
+          defaultVariant="pulse"
+          sectionLabel="Animation Style"
+        />
         <ScaleControl overlayId={overlayId} />
       </div>
     );
@@ -87,11 +100,11 @@ export function CTAControls({ overlayId }: Props) {
   if (overlay.type === "ig-follow") {
     return (
       <div className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
           Instagram Follow
         </p>
         <div className="space-y-1">
-          <Label className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>Username</Label>
+          <Label className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Username</Label>
           <Input
             value={overlay.username ?? ""}
             onChange={(e) => updateOverlay(overlayId, { username: e.target.value })}
@@ -108,11 +121,11 @@ export function CTAControls({ overlayId }: Props) {
   if (overlay.type === "text") {
     return (
       <div className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
           Text Content
         </p>
         <div className="space-y-1">
-          <Label className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>Text</Label>
+          <Label className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Text</Label>
           <textarea
             value={overlay.text ?? ""}
             onChange={(e) => updateOverlay(overlayId, { text: e.target.value })}
