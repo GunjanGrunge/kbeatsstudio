@@ -1,4 +1,4 @@
-import { useCurrentFrame, useVideoConfig, interpolate, spring, Img } from "remotion";
+import { useCurrentFrame, useVideoConfig, interpolate, spring, Img, AbsoluteFill } from "remotion";
 import type { OverlayConfig } from "@/types/studio";
 
 interface Props {
@@ -8,7 +8,8 @@ interface Props {
 export function ImageOverlay({ overlay }: Props) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const relFrame = frame - overlay.startFrame;
+  // frame is already relative to the Sequence start — no need to subtract startFrame again
+  const relFrame = frame;
   const totalFrames = overlay.durationInFrames;
 
   const fadeIn = interpolate(relFrame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
@@ -65,6 +66,25 @@ export function ImageOverlay({ overlay }: Props) {
   }
 
   if (!overlay.imageSrc) return null;
+
+  const imageFit = overlay.imageFit ?? "none";
+
+  // Full-screen fit mode — fills the entire canvas
+  if (imageFit !== "none") {
+    return (
+      <AbsoluteFill style={{ opacity: alpha }}>
+        <Img
+          src={overlay.imageSrc}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: imageFit,
+            display: "block",
+          }}
+        />
+      </AbsoluteFill>
+    );
+  }
 
   return (
     <div

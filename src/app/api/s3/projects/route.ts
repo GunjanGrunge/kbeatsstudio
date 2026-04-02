@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       template,
       audioSrc: null,
       videoSrc: null,
+      videoFit: "cover",
       durationInFrames: template.fps * 30,
       overlays: [],
       selectedOverlayId: null,

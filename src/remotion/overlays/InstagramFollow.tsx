@@ -8,7 +8,7 @@ interface Props {
 export function InstagramFollow({ overlay }: Props) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const relFrame = frame - overlay.startFrame;
+  const relFrame = frame;
   const totalFrames = overlay.durationInFrames;
 
   const scale = spring({

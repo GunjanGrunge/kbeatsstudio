@@ -46,6 +46,7 @@ function OverlayRenderer({ overlay, audioSrc }: { overlay: OverlayConfig; audioS
 export function KBeatsComposition({
   audioSrc,
   videoSrc,
+  videoFit,
   backgroundColor,
   backgroundOpacity,
   overlays,
@@ -60,6 +61,7 @@ export function KBeatsComposition({
       {/* Background layer */}
       <VideoBackground
         videoSrc={videoSrc}
+        videoFit={videoFit ?? "cover"}
         backgroundColor={backgroundColor ?? "#050505"}
         backgroundOpacity={backgroundOpacity ?? 1}
         opacity={1}

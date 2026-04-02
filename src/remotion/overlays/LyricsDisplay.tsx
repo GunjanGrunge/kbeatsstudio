@@ -350,7 +350,7 @@ export function LyricsDisplay({ overlay }: Props) {
     >
       {lines.map((line, i) => {
         const lineDuration = line.durationInFrames ?? 90;
-        const relFrame = frame - overlay.startFrame - line.startFrame;
+        const relFrame = frame - line.startFrame;
         if (relFrame < 0 || relFrame > lineDuration) return null;
 
         return (

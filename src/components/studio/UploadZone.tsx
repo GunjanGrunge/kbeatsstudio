@@ -11,6 +11,8 @@ export function UploadZone() {
   const videoSrc = useStudioStore((s) => s.videoSrc);
   const setAudioSrc = useStudioStore((s) => s.setAudioSrc);
   const setVideoSrc = useStudioStore((s) => s.setVideoSrc);
+  const videoFit = useStudioStore((s) => s.videoFit);
+  const setVideoFit = useStudioStore((s) => s.setVideoFit);
 
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -109,18 +111,44 @@ export function UploadZone() {
             </div>
           )}
           {videoSrc && (
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-[#1a1a1c] border border-[rgba(255,255,255,0.05)]">
-              <Video size={13} className="text-[#ccff00] shrink-0" />
-              <span className="text-xs text-white truncate flex-1" style={{ fontFamily: "Outfit, sans-serif" }}>
-                Video loaded
-              </span>
-              <CheckCircle size={13} className="text-[#ccff00] shrink-0" />
-              <button
-                onClick={() => setVideoSrc(null)}
-                className="text-[#555555] hover:text-red-400 transition-colors"
-              >
-                <X size={11} />
-              </button>
+            <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-[#1a1a1c] border border-[rgba(255,255,255,0.05)]">
+              <div className="flex items-center gap-2">
+                <Video size={13} className="text-[#ccff00] shrink-0" />
+                <span className="text-xs text-white truncate flex-1" style={{ fontFamily: "Outfit, sans-serif" }}>
+                  Video loaded
+                </span>
+                <CheckCircle size={13} className="text-[#ccff00] shrink-0" />
+                <button
+                  onClick={() => setVideoSrc(null)}
+                  className="text-[#555555] hover:text-red-400 transition-colors"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+              {/* Fit toggle */}
+              <div className="flex gap-1">
+                {(["cover", "contain", "fill"] as const).map((fit) => (
+                  <button
+                    key={fit}
+                    onClick={() => setVideoFit(fit)}
+                    className="flex-1 text-[9px] py-0.5 rounded transition-all"
+                    style={{
+                      fontFamily: "Outfit, sans-serif",
+                      background: videoFit === fit ? "#ccff00" : "rgba(255,255,255,0.05)",
+                      color: videoFit === fit ? "#050505" : "#666666",
+                      border: `1px solid ${videoFit === fit ? "#ccff00" : "rgba(255,255,255,0.08)"}`,
+                      fontWeight: videoFit === fit ? 700 : 400,
+                    }}
+                    title={
+                      fit === "cover" ? "Fill canvas — crop edges if needed" :
+                      fit === "contain" ? "Fit inside canvas — letterbox/pillarbox" :
+                      "Stretch to fill — may distort"
+                    }
+                  >
+                    {fit}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <button

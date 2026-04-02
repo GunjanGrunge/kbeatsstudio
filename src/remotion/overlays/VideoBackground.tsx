@@ -2,12 +2,13 @@ import { Video, AbsoluteFill } from "remotion";
 
 interface Props {
   videoSrc: string | null;
+  videoFit?: "cover" | "contain" | "fill";
   opacity?: number;
   backgroundColor?: string;
   backgroundOpacity?: number;
 }
 
-export function VideoBackground({ videoSrc, opacity = 1, backgroundColor = "#050505", backgroundOpacity = 1 }: Props) {
+export function VideoBackground({ videoSrc, videoFit = "cover", opacity = 1, backgroundColor = "#050505", backgroundOpacity = 1 }: Props) {
   return (
     <AbsoluteFill>
       {/* Solid background color */}
@@ -28,7 +29,7 @@ export function VideoBackground({ videoSrc, opacity = 1, backgroundColor = "#050
             inset: 0,
             width: "100%",
             height: "100%",
-            objectFit: "cover",
+            objectFit: videoFit,
             opacity,
           }}
         />

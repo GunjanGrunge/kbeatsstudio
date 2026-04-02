@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Loader2, Download, ArrowLeft, Pencil, ChevronDown } from "lucide-react";
+import { Check, Loader2, Download, ArrowLeft, Pencil, ChevronDown, Save } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
+import { saveProject } from "@/hooks/useAutoSave";
 import { useRouter } from "next/navigation";
 import { TEMPLATES, type Template } from "@/types/studio";
 
@@ -21,6 +22,7 @@ export function ProjectHeader({ onExport }: Props) {
   const loadProject = useStudioStore((s) => s.loadProject);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(projectName);
+  const [saving, setSaving] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   const handleNameSubmit = () => {
@@ -139,36 +141,32 @@ export function ProjectHeader({ onExport }: Props) {
         </div>
       </div>
 
-      {/* Right: Save status + Export */}
-      <div className="flex items-center gap-4 shrink-0">
-        {/* Save status */}
-        <AnimatePresence mode="wait">
-          {isDirty ? (
-            <motion.div
-              key="saving"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-1.5 text-[#F7F6E5]"
-              style={{ fontFamily: "Outfit, sans-serif", fontSize: 11 }}
-            >
-              <Loader2 size={11} className="animate-spin" />
-              Saving...
-            </motion.div>
-          ) : lastSaved ? (
-            <motion.div
-              key="saved"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-1.5 text-[#555555]"
-              style={{ fontFamily: "Outfit, sans-serif", fontSize: 11 }}
-            >
-              <Check size={11} className="text-[#ccff00]" />
-              Saved
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+      {/* Right: Save + Export */}
+      <div className="flex items-center gap-3 shrink-0">
+        {/* Save button */}
+        <button
+          onClick={async () => {
+            setSaving(true);
+            try { await saveProject(); } finally { setSaving(false); }
+          }}
+          disabled={saving || !isDirty}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border"
+          style={{
+            fontFamily: "Outfit, sans-serif",
+            background: isDirty ? "rgba(204,255,0,0.08)" : "transparent",
+            borderColor: isDirty ? "rgba(204,255,0,0.3)" : "#222",
+            color: saving ? "#888" : isDirty ? "#ccff00" : "#444",
+            cursor: isDirty && !saving ? "pointer" : "default",
+          }}
+        >
+          {saving ? (
+            <><Loader2 size={11} className="animate-spin" /> Saving…</>
+          ) : !isDirty && lastSaved ? (
+            <><Check size={11} /> Saved</>
+          ) : (
+            <><Save size={11} /> Save</>
+          )}
+        </button>
 
         {/* Export button */}
         <button

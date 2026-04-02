@@ -7,7 +7,7 @@ interface Props {
 
 export function TextOverlay({ overlay }: Props) {
   const frame = useCurrentFrame();
-  const relFrame = frame - overlay.startFrame;
+  const relFrame = frame;
   const totalFrames = overlay.durationInFrames;
 
   const fadeIn = interpolate(relFrame, [0, 10], [0, 1], { extrapolateRight: "clamp" });

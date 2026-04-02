@@ -109,6 +109,7 @@ export interface OverlayConfig {
   text?: string;
   // For image overlay
   imageSrc?: string;
+  imageFit?: "none" | "contain" | "cover" | "fill";
   // For waveform
   waveformColor?: string;
   waveformBars?: number;
@@ -137,6 +138,7 @@ export interface ProjectState {
   template: Template;
   audioSrc: string | null; // S3 HTTPS URL
   videoSrc: string | null; // S3 HTTPS URL
+  videoFit: "cover" | "contain" | "fill"; // how the video fills the canvas
   durationInFrames: number;
   overlays: OverlayConfig[];
   selectedOverlayId: string | null;
@@ -168,6 +170,7 @@ export interface RenderJob {
 export interface KBeatsInputProps {
   audioSrc: string | null;
   videoSrc: string | null;
+  videoFit: "cover" | "contain" | "fill";
   durationInFrames: number;
   fps: number;
   width: number;

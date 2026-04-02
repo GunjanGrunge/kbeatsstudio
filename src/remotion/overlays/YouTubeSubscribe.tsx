@@ -96,7 +96,7 @@ function getEntrance(variant: SubscribeVariant, relFrame: number, fps: number) {
 export function YouTubeSubscribe({ overlay }: Props) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const relFrame = frame - overlay.startFrame;
+  const relFrame = frame;
   const totalFrames = overlay.durationInFrames;
 
   const variant = (overlay.animationVariant ?? "click") as SubscribeVariant;

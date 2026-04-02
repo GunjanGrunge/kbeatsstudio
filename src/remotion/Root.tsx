@@ -5,6 +5,7 @@ import type { KBeatsInputProps } from "@/types/studio";
 const DEFAULT_PROPS: KBeatsInputProps = {
   audioSrc: null,
   videoSrc: null,
+  videoFit: "cover",
   durationInFrames: 900,
   fps: 30,
   width: 1920,

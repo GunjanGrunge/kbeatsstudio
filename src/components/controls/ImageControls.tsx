@@ -39,6 +39,7 @@ export function ImageControls({ overlayId }: Props) {
           fileName: file.name,
           contentType: file.type,
           fileType: "image",
+          uniqueKey: overlayId,
         }),
       });
 
@@ -92,7 +93,7 @@ export function ImageControls({ overlayId }: Props) {
           fileName: file.name,
           contentType: file.type,
           fileType: "image",
-          uniqueKey: "image-nobg",
+          uniqueKey: `${overlayId}-nobg`,
         }),
       });
       if (!res.ok) {
@@ -213,7 +214,39 @@ export function ImageControls({ overlayId }: Props) {
         )}
       </div>
 
-      {/* Size control */}
+      {/* Fit to screen */}
+      <div className="space-y-1.5">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+          Fit to Screen
+        </p>
+        <div className="flex gap-1">
+          {(["none", "contain", "cover", "fill"] as const).map((fit) => (
+            <button
+              key={fit}
+              className="flex-1 py-1 rounded text-[9px] transition-all duration-150 border"
+              style={{
+                fontFamily: "Outfit, sans-serif",
+                background: (overlay.imageFit ?? "none") === fit ? "#ccff00" : "rgba(255,255,255,0.03)",
+                borderColor: (overlay.imageFit ?? "none") === fit ? "#ccff00" : "rgba(255,255,255,0.06)",
+                color: (overlay.imageFit ?? "none") === fit ? "#050505" : "#666666",
+                fontWeight: (overlay.imageFit ?? "none") === fit ? 700 : 400,
+              }}
+              title={
+                fit === "none" ? "Positioned overlay (default)" :
+                fit === "contain" ? "Fit inside canvas — letterbox if needed" :
+                fit === "cover" ? "Fill canvas — crop edges if needed" :
+                "Stretch to fill — may distort"
+              }
+              onClick={() => updateOverlay(overlayId, { imageFit: fit })}
+            >
+              {fit}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Size control — hidden in fit mode */}
+      {(overlay.imageFit ?? "none") === "none" && (
       <div className="space-y-1.5">
         <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
           <span>Size</span>
@@ -244,6 +277,7 @@ export function ImageControls({ overlayId }: Props) {
           ))}
         </div>
       </div>
+      )}
 
       <input
         ref={inputRef}

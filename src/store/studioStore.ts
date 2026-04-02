@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { v4 as uuidv4 } from "uuid";
-import type { OverlayConfig, OverlayType, ProjectState, Template } from "@/types/studio";
+import type { OverlayConfig, OverlayType, LyricLine, ProjectState, Template } from "@/types/studio";
 import { TEMPLATES } from "@/types/studio";
 
 interface StudioActions {
@@ -17,6 +17,7 @@ interface StudioActions {
   setDurationInFrames: (frames: number) => void;
   setBackgroundColor: (color: string) => void;
   setBackgroundOpacity: (opacity: number) => void;
+  setVideoFit: (fit: "cover" | "contain" | "fill") => void;
   markSaved: () => void;
 
   // Playhead (UI-only, not persisted)
@@ -28,9 +29,19 @@ interface StudioActions {
   updateOverlay: (id: string, patch: Partial<OverlayConfig>) => void;
   removeOverlay: (id: string) => void;
   reorderOverlays: (fromIndex: number, toIndex: number) => void;
+  setOverlays: (overlays: OverlayConfig[]) => void;
   toggleOverlayVisibility: (id: string) => void;
   selectOverlay: (id: string | null) => void;
   duplicateOverlay: (id: string) => void;
+
+  // Lyric line UI selection (not persisted)
+  selectedLyricLineIndex: number | null;
+  setSelectedLyricLineIndex: (idx: number | null) => void;
+
+  // Lyric line CRUD
+  addLyricLine: (overlayId: string, line: LyricLine) => void;
+  updateLyricLine: (overlayId: string, lineIndex: number, patch: Partial<LyricLine>) => void;
+  removeLyricLine: (overlayId: string, lineIndex: number) => void;
 }
 
 type StudioStore = ProjectState & StudioActions;
@@ -41,6 +52,7 @@ const DEFAULT_STATE: ProjectState = {
   template: TEMPLATES[0],
   audioSrc: null,
   videoSrc: null,
+  videoFit: "cover",
   durationInFrames: 900, // 30s at 30fps
   overlays: [],
   selectedOverlayId: null,
@@ -52,12 +64,12 @@ const DEFAULT_STATE: ProjectState = {
 
 const DEFAULT_OVERLAY_DURATION = 150; // 5s at 30fps
 
-function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
+function createDefaultOverlay(type: OverlayType, fps: number, startFrame = 0): OverlayConfig {
   const base: Omit<OverlayConfig, "type"> = {
     id: uuidv4(),
     label: OVERLAY_LABELS[type],
     visible: true,
-    startFrame: 0,
+    startFrame,
     durationInFrames: DEFAULT_OVERLAY_DURATION,
     position: { x: 50, y: 50 },
     opacity: 1,
@@ -105,7 +117,7 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
         position: { x: 50, y: 70 },
         durationInFrames: fps * 30,
         lyrics: [
-          { text: "Add your lyrics here...", startFrame: 0 },
+          { text: "Add your lyrics here...", startFrame },
         ],
         font: { ...base.font!, size: 56 },
         color: "#ffffff",
@@ -121,7 +133,7 @@ function createDefaultOverlay(type: OverlayType, fps: number): OverlayConfig {
           {
             lyric: "Add your lyrics here...",
             chords: [{ chord: "Am", charOffset: 0 }],
-            startFrame: 0,
+            startFrame,
           },
         ],
         font: { ...base.font!, size: 48 },
@@ -200,6 +212,13 @@ export const useStudioStore = create<StudioStore>()(
           (state as unknown as { currentFrame: number }).currentFrame = frame;
         }),
 
+      // UI-only lyric line selection (not persisted)
+      selectedLyricLineIndex: null,
+      setSelectedLyricLineIndex: (idx) =>
+        set((state) => {
+          (state as unknown as { selectedLyricLineIndex: number | null }).selectedLyricLineIndex = idx;
+        }),
+
       initProject: (projectId, template) =>
         set((state) => {
           Object.assign(state, {
@@ -234,6 +253,12 @@ export const useStudioStore = create<StudioStore>()(
           state.isDirty = true;
         }),
 
+      setVideoFit: (fit) =>
+        set((state) => {
+          state.videoFit = fit;
+          state.isDirty = true;
+        }),
+
       setDurationInFrames: (frames) =>
         set((state) => {
           state.durationInFrames = frames;
@@ -260,7 +285,7 @@ export const useStudioStore = create<StudioStore>()(
 
       addOverlay: (type) =>
         set((state) => {
-          const overlay = createDefaultOverlay(type, state.template.fps);
+          const overlay = createDefaultOverlay(type, state.template.fps, (state as unknown as { currentFrame: number }).currentFrame);
           state.overlays.push(overlay);
           state.selectedOverlayId = overlay.id;
           state.isDirty = true;
@@ -291,6 +316,42 @@ export const useStudioStore = create<StudioStore>()(
           state.isDirty = true;
         }),
 
+      setOverlays: (overlays) =>
+        set((state) => {
+          state.overlays = overlays;
+          state.isDirty = true;
+        }),
+
+      addLyricLine: (overlayId, line) =>
+        set((state) => {
+          const overlay = state.overlays.find((o) => o.id === overlayId);
+          if (!overlay || !overlay.lyrics) return;
+          overlay.lyrics.push(line);
+          state.isDirty = true;
+        }),
+
+      updateLyricLine: (overlayId, lineIndex, patch) =>
+        set((state) => {
+          const overlay = state.overlays.find((o) => o.id === overlayId);
+          if (!overlay || !overlay.lyrics || !overlay.lyrics[lineIndex]) return;
+          Object.assign(overlay.lyrics[lineIndex], patch);
+          // Auto-expand overlay duration if a segment now extends beyond it
+          const line = overlay.lyrics[lineIndex];
+          const segEnd = line.startFrame + (line.durationInFrames ?? 90);
+          if (segEnd > overlay.durationInFrames) {
+            overlay.durationInFrames = segEnd;
+          }
+          state.isDirty = true;
+        }),
+
+      removeLyricLine: (overlayId, lineIndex) =>
+        set((state) => {
+          const overlay = state.overlays.find((o) => o.id === overlayId);
+          if (!overlay || !overlay.lyrics) return;
+          overlay.lyrics.splice(lineIndex, 1);
+          state.isDirty = true;
+        }),
+
       toggleOverlayVisibility: (id) =>
         set((state) => {
           const overlay = state.overlays.find((o) => o.id === id);
@@ -303,6 +364,8 @@ export const useStudioStore = create<StudioStore>()(
       selectOverlay: (id) =>
         set((state) => {
           state.selectedOverlayId = id;
+          // Reset lyric line selection when switching overlays
+          (state as unknown as { selectedLyricLineIndex: number | null }).selectedLyricLineIndex = null;
         }),
 
       duplicateOverlay: (id) =>
@@ -330,6 +393,7 @@ export const useStudioStore = create<StudioStore>()(
         template: state.template,
         audioSrc: state.audioSrc,
         videoSrc: state.videoSrc,
+        videoFit: state.videoFit,
         durationInFrames: state.durationInFrames,
         overlays: state.overlays,
         backgroundColor: state.backgroundColor,

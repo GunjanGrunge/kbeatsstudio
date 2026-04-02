@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
-  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, FileText, Waves, Type, Image, LucideProps
+  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, Waves, Type, Image, LucideProps
 } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 import type { OverlayConfig, OverlayType } from "@/types/studio";
@@ -112,7 +112,7 @@ function OverlayItem({ overlay, isSelected }: { overlay: OverlayConfig; isSelect
 export function OverlayList() {
   const overlays = useStudioStore((s) => s.overlays);
   const selectedId = useStudioStore((s) => s.selectedOverlayId);
-  const reorderOverlays = useStudioStore((s) => s.reorderOverlays);
+  const setOverlays = useStudioStore((s) => s.setOverlays);
   const addOverlay = useStudioStore((s) => s.addOverlay);
   const [showAddMenu, setShowAddMenu] = useState(false);
 
@@ -129,14 +129,10 @@ export function OverlayList() {
     { type: "image", label: "Image / Logo" },
   ];
 
-  const handleReorder = (newOrder: OverlayConfig[]) => {
-    // Find the indices that changed and call reorderOverlays
-    newOrder.forEach((overlay, newIndex) => {
-      const oldIndex = overlays.findIndex((o) => o.id === overlay.id);
-      if (oldIndex !== newIndex) {
-        reorderOverlays(oldIndex, newIndex);
-      }
-    });
+  // The list is displayed in reverse (top layer first), so when Framer
+  // gives us the new reversed order we flip it back before saving.
+  const handleReorder = (newReversedOrder: OverlayConfig[]) => {
+    setOverlays([...newReversedOrder].reverse());
   };
 
   return (
@@ -198,7 +194,7 @@ export function OverlayList() {
         ) : (
           <Reorder.Group
             axis="y"
-            values={overlays}
+            values={[...overlays].reverse()}
             onReorder={handleReorder}
             className="flex flex-col gap-0.5"
           >

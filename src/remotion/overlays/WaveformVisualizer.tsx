@@ -307,7 +307,7 @@ export function WaveformVisualizer({ overlay, audioSrc }: Props) {
   const opacity = overlay.opacity ?? 0.85;
   const style = overlay.waveformStyle ?? "bars";
 
-  const relFrame = frame - overlay.startFrame;
+  const relFrame = frame;
   const fadeIn = interpolate(relFrame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
   const fadeOut = interpolate(relFrame, [overlay.durationInFrames - 8, overlay.durationInFrames], [1, 0], { extrapolateLeft: "clamp" });
   const alpha = Math.min(fadeIn, fadeOut) * opacity;

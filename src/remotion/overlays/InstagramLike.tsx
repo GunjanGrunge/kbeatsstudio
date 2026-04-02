@@ -37,7 +37,7 @@ function HeartIcon({ size, fill, opacity }: { size: number; fill: string; opacit
 export function InstagramLike({ overlay }: Props) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const relFrame = frame - overlay.startFrame;
+  const relFrame = frame;
   const totalFrames = overlay.durationInFrames;
 
   const fadeOut = interpolate(relFrame, [totalFrames - 15, totalFrames], [1, 0], {

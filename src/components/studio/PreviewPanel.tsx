@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useDeferredValue, useEffect } from "react";
+import { useMemo, useDeferredValue } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import { useStudioStore } from "@/store/studioStore";
 import { KBeatsComposition } from "@/remotion/compositions/KBeatsComposition";
@@ -8,7 +8,7 @@ import type { KBeatsInputProps } from "@/types/studio";
 import { useProjectDuration } from "@/hooks/useProjectDuration";
 
 interface Props {
-  playerRef: React.RefObject<PlayerRef | null>;
+  playerRef: React.RefObject<PlayerRef | null> | ((ref: PlayerRef | null) => void);
 }
 
 export function PreviewPanel({ playerRef }: Props) {
@@ -17,6 +17,7 @@ export function PreviewPanel({ playerRef }: Props) {
   const template = useStudioStore((s) => s.template);
   const audioSrc = useStudioStore((s) => s.audioSrc);
   const videoSrc = useStudioStore((s) => s.videoSrc);
+  const videoFit = useStudioStore((s) => s.videoFit);
   const durationInFrames = useStudioStore((s) => s.durationInFrames);
   const overlays = useStudioStore((s) => s.overlays);
   const backgroundColor = useStudioStore((s) => s.backgroundColor);
@@ -26,6 +27,7 @@ export function PreviewPanel({ playerRef }: Props) {
     () => ({
       audioSrc,
       videoSrc,
+      videoFit,
       durationInFrames,
       fps: template.fps,
       width: template.width,
@@ -34,7 +36,7 @@ export function PreviewPanel({ playerRef }: Props) {
       backgroundOpacity,
       overlays,
     }),
-    [audioSrc, videoSrc, durationInFrames, template, backgroundColor, backgroundOpacity, overlays]
+    [audioSrc, videoSrc, videoFit, durationInFrames, template, backgroundColor, backgroundOpacity, overlays]
   );
 
   // Defer to avoid jank while dragging sliders
@@ -69,9 +71,7 @@ export function PreviewPanel({ playerRef }: Props) {
               compositionWidth={template.width}
               compositionHeight={template.height}
               style={{ width: "100%", height: "100%", borderRadius: 8 }}
-              controls
               loop
-              showVolumeControls
               clickToPlay
               acknowledgeRemotionLicense
             />

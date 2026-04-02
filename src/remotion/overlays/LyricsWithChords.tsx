@@ -135,7 +135,7 @@ export function LyricsWithChords({ overlay }: Props) {
     >
       {lines.map((line, i) => {
         const duration = line.durationInFrames ?? 90;
-        const relFrame = frame - overlay.startFrame - line.startFrame;
+        const relFrame = frame - line.startFrame;
         if (relFrame < 0 || relFrame > duration) return null;
 
         return (

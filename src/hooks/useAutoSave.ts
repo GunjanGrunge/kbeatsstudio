@@ -1,55 +1,56 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useStudioStore } from "@/store/studioStore";
 
-const DEBOUNCE_MS = 2000;
+function buildPayload(state: ReturnType<typeof useStudioStore.getState>) {
+  return JSON.stringify({
+    projectId: state.projectId,
+    projectName: state.projectName,
+    template: state.template,
+    audioSrc: state.audioSrc,
+    videoSrc: state.videoSrc,
+    videoFit: state.videoFit,
+    durationInFrames: state.durationInFrames,
+    overlays: state.overlays,
+    selectedOverlayId: null,
+    isDirty: false,
+    lastSaved: null,
+    backgroundColor: state.backgroundColor,
+    backgroundOpacity: state.backgroundOpacity,
+  });
+}
 
 /**
- * Auto-saves the current project state to S3 whenever isDirty becomes true.
- * Debounces by 2 seconds to avoid excessive writes.
+ * Registers a beforeunload beacon so unsaved changes are flushed if the user
+ * closes the tab without clicking Save. Auto-save on every keystroke is
+ * intentionally removed — the user saves explicitly via the Save button.
  */
 export function useAutoSave() {
-  const projectId = useStudioStore((s) => s.projectId);
-  const isDirty = useStudioStore((s) => s.isDirty);
-  const markSaved = useStudioStore((s) => s.markSaved);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
-    if (!isDirty || !projectId) return;
-
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    timerRef.current = setTimeout(async () => {
-      // Read current full state snapshot
+    const flush = () => {
       const state = useStudioStore.getState();
-      try {
-        await fetch(`/api/s3/projects/${projectId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            projectId: state.projectId,
-            projectName: state.projectName,
-            template: state.template,
-            audioSrc: state.audioSrc,
-            videoSrc: state.videoSrc,
-            durationInFrames: state.durationInFrames,
-            overlays: state.overlays,
-            selectedOverlayId: null, // don't persist selection
-            isDirty: false,
-            lastSaved: null, // server fills this
-            backgroundColor: state.backgroundColor,
-            backgroundOpacity: state.backgroundOpacity,
-          }),
-        });
-        markSaved();
-      } catch (err) {
-        console.warn("[auto-save] Failed to save to S3:", err);
-      }
-    }, DEBOUNCE_MS);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (!state.isDirty || !state.projectId) return;
+      navigator.sendBeacon(
+        `/api/s3/projects/${state.projectId}`,
+        new Blob([buildPayload(state)], { type: "application/json" })
+      );
     };
-  }, [isDirty, projectId, markSaved]);
+    window.addEventListener("beforeunload", flush);
+    return () => window.removeEventListener("beforeunload", flush);
+  }, []);
+}
+
+/**
+ * Manually save to S3. Call this from the Save button.
+ */
+export async function saveProject(): Promise<void> {
+  const state = useStudioStore.getState();
+  if (!state.projectId) return;
+  await fetch(`/api/s3/projects/${state.projectId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: buildPayload(state),
+  });
+  state.markSaved();
 }
