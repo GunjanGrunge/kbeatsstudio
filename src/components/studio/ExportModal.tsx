@@ -105,7 +105,6 @@ export function ExportModal({ open, onClose }: Props) {
   const trimDuration = Math.max(1, trimEnd - trimStart);
   const trimFrames = Math.round(trimDuration * fps);
   const startFrame = Math.round(trimStart * fps);
-  const endFrame = Math.min(durationInFrames - 1, Math.round(trimEnd * fps) - 1);
 
   function commitTrimStart(val: string) {
     const s = parseTime(val);
@@ -131,6 +130,9 @@ export function ExportModal({ open, onClose }: Props) {
     setStarting(true);
     setStartError(null);
 
+    // Scale containerWidth when exporting at a different canvas size
+    const widthScale = selectedTemplate.width / template.width;
+
     const inputProps: KBeatsInputProps = {
       audioSrc,
       videoSrc,
@@ -141,10 +143,13 @@ export function ExportModal({ open, onClose }: Props) {
       height: selectedTemplate.height,
       backgroundColor,
       backgroundOpacity,
-      // Shift overlay startFrames relative to trim start so they appear at correct times
+      // Shift overlay startFrames relative to trim start; scale containerWidth for target resolution
       overlays: overlays.map((o) => ({
         ...o,
         startFrame: Math.max(0, o.startFrame - startFrame),
+        ...(o.containerWidth !== undefined
+          ? { containerWidth: Math.round(o.containerWidth * widthScale) }
+          : {}),
       })),
     };
 
@@ -152,7 +157,9 @@ export function ExportModal({ open, onClose }: Props) {
       const res = await fetch("/api/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inputProps, projectId, frameRange: [startFrame, endFrame] }),
+        // No frameRange — composition durationInFrames is already trimmed,
+        // Lambda renders frames 0..trimFrames-1 by default
+        body: JSON.stringify({ inputProps, projectId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to start render");
