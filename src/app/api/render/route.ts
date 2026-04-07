@@ -24,6 +24,12 @@ async function presignOverlays(overlays: OverlayConfig[]): Promise<OverlayConfig
       if (o.type === "image" && o.imageSrc) {
         return { ...o, imageSrc: await presignIfPrivate(o.imageSrc) ?? o.imageSrc };
       }
+      if ((o.type === "audio-track" || o.type === "waveform") && o.audioSrc) {
+        return { ...o, audioSrc: await presignIfPrivate(o.audioSrc) ?? o.audioSrc };
+      }
+      if (o.type === "video-background" && o.videoSrc) {
+        return { ...o, videoSrc: await presignIfPrivate(o.videoSrc) ?? o.videoSrc };
+      }
       return o;
     })
   );

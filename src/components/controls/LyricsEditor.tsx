@@ -571,8 +571,10 @@ export function LyricsEditor({ overlayId }: Props) {
               <select
                 value={effectiveVariant}
                 onChange={(e) => {
-                  updateSelected({ animationVariant: e.target.value as LyricsVariant });
-                  setTimeout(flushSelected, 0);
+                  const val = e.target.value as LyricsVariant;
+                  const next = lines.map((l, i) => i === sel ? { ...l, animationVariant: val } : l);
+                  setLines(next);
+                  flushToStore(next);
                 }}
                 className="w-full h-7 rounded px-2 pr-6 text-[11px] text-white outline-none appearance-none"
                 style={{
@@ -612,7 +614,7 @@ export function LyricsEditor({ overlayId }: Props) {
               <input
                 type="color"
                 value={effectiveColor}
-                onChange={(e) => { updateSelected({ color: e.target.value }); setTimeout(flushSelected, 0); }}
+                onChange={(e) => { const next = lines.map((l, i) => i === sel ? { ...l, color: e.target.value } : l); setLines(next); flushToStore(next); }}
                 className="w-7 h-7 rounded cursor-pointer border-0 p-0"
                 style={{ background: "none" }}
               />
@@ -653,7 +655,7 @@ export function LyricsEditor({ overlayId }: Props) {
             <div className="relative">
               <select
                 value={effectiveFontFamily}
-                onChange={(e) => { updateSelected({ fontFamily: e.target.value }); setTimeout(flushSelected, 0); }}
+                onChange={(e) => { const next = lines.map((l, i) => i === sel ? { ...l, fontFamily: e.target.value } : l); setLines(next); flushToStore(next); }}
                 className="w-full h-7 rounded px-2 pr-6 text-[11px] text-white outline-none appearance-none"
                 style={{
                   fontFamily: "Outfit, sans-serif",
@@ -690,7 +692,7 @@ export function LyricsEditor({ overlayId }: Props) {
               <div className="relative">
                 <select
                   value={effectiveFontWeight}
-                  onChange={(e) => { updateSelected({ fontWeight: parseInt(e.target.value) }); setTimeout(flushSelected, 0); }}
+                  onChange={(e) => { const w = parseInt(e.target.value); const next = lines.map((l, i) => i === sel ? { ...l, fontWeight: w } : l); setLines(next); flushToStore(next); }}
                   className="w-full h-7 rounded px-2 pr-6 text-[11px] text-white outline-none appearance-none"
                   style={{
                     fontFamily: "Outfit, sans-serif",
