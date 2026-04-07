@@ -143,6 +143,7 @@ export function ExportModal({ open, onClose }: Props) {
       height: selectedTemplate.height,
       backgroundColor,
       backgroundOpacity,
+      trimStartFrame: startFrame,
       // Shift overlay startFrames relative to trim start; scale containerWidth for target resolution
       overlays: overlays.map((o) => ({
         ...o,

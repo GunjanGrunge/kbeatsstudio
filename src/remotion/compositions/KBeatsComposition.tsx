@@ -64,6 +64,7 @@ export function KBeatsComposition({
   backgroundColor,
   backgroundOpacity,
   overlays,
+  trimStartFrame = 0,
 }: KBeatsInputProps) {
   const { durationInFrames } = useVideoConfig();
 
@@ -79,10 +80,11 @@ export function KBeatsComposition({
         backgroundColor={backgroundColor ?? "#050505"}
         backgroundOpacity={backgroundOpacity ?? 1}
         opacity={1}
+        startFrom={trimStartFrame}
       />
 
       {/* Audio track (invisible) */}
-      <AudioTrack audioSrc={audioSrc} />
+      <AudioTrack audioSrc={audioSrc} startFrom={trimStartFrame} />
 
       {/* Overlay layers — each wrapped in a Sequence for timing */}
       {visibleOverlays.map((overlay) => (

@@ -6,9 +6,10 @@ interface Props {
   opacity?: number;
   backgroundColor?: string;
   backgroundOpacity?: number;
+  startFrom?: number;
 }
 
-export function VideoBackground({ videoSrc, videoFit = "cover", opacity = 1, backgroundColor = "#050505", backgroundOpacity = 1 }: Props) {
+export function VideoBackground({ videoSrc, videoFit = "cover", opacity = 1, backgroundColor = "#050505", backgroundOpacity = 1, startFrom = 0 }: Props) {
   return (
     <AbsoluteFill>
       {/* Solid background color */}
@@ -24,6 +25,7 @@ export function VideoBackground({ videoSrc, videoFit = "cover", opacity = 1, bac
       {videoSrc && (
         <Video
           src={videoSrc}
+          startFrom={startFrom}
           style={{
             position: "absolute",
             inset: 0,

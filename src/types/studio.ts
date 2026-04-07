@@ -223,6 +223,8 @@ export interface KBeatsInputProps {
   backgroundColor: string;
   backgroundOpacity: number;
   overlays: OverlayConfig[];
+  /** Frame offset into audio/video to start playback from (for trim) */
+  trimStartFrame?: number;
 }
 
 export const TEMPLATES: Template[] = [
