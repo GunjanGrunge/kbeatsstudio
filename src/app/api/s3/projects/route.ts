@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
       lastSaved: now,
       backgroundColor: "#050505",
       backgroundOpacity: 1,
+      inMarker: null,
+      outMarker: null,
     };
 
     // Write config
