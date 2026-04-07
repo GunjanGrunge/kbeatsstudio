@@ -84,6 +84,31 @@ export async function listS3Objects(prefix: string): Promise<string[]> {
   return (res.Contents ?? []).map((o) => o.Key ?? "").filter(Boolean);
 }
 
+/** Apply (or re-apply) the public-read bucket policy for renders and project assets */
+export async function applyBucketPolicy(): Promise<void> {
+  const policy = {
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Sid: "PublicReadProjectAssets",
+        Effect: "Allow",
+        Principal: "*",
+        Action: "s3:GetObject",
+        Resource: [
+          `arn:aws:s3:::${BUCKET}/renders/*`,
+          `arn:aws:s3:::${BUCKET}/projects/*`,
+        ],
+      },
+    ],
+  };
+  await s3.send(
+    new PutBucketPolicyCommand({
+      Bucket: BUCKET,
+      Policy: JSON.stringify(policy),
+    })
+  );
+}
+
 /** Create the kbeats-studio bucket with CORS if it doesn't exist (run once during setup) */
 export async function ensureBucketExists(): Promise<void> {
   try {
@@ -125,16 +150,19 @@ export async function ensureBucketExists(): Promise<void> {
     })
   );
 
-  // Set bucket policy to allow public read for renders
+  // Set bucket policy to allow public read for renders and project assets
   const policy = {
     Version: "2012-10-17",
     Statement: [
       {
-        Sid: "PublicReadRenders",
+        Sid: "PublicReadProjectAssets",
         Effect: "Allow",
         Principal: "*",
         Action: "s3:GetObject",
-        Resource: `arn:aws:s3:::${BUCKET}/renders/*`,
+        Resource: [
+          `arn:aws:s3:::${BUCKET}/renders/*`,
+          `arn:aws:s3:::${BUCKET}/projects/*`,
+        ],
       },
     ],
   };

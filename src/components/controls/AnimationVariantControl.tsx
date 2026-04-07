@@ -47,6 +47,10 @@ export const LYRICS_VARIANTS: VariantOption[] = [
   { value: "typewriter-fill",label: "Type + Fill",    description: "Typewriter with color fill" },
   { value: "word-pop",       label: "Word Pop",       description: "Each word springs in" },
   { value: "glow-pulse",     label: "Glow Pulse",     description: "Pulsing bloom effect" },
+  { value: "karaoke",        label: "Karaoke",        description: "Live fill sweeps word by word" },
+  { value: "glitch-scatter",   label: "Glitch Scatter",    description: "Chars scatter in/out with RGB glitch" },
+  { value: "fragment-shatter", label: "Fragment Shatter",  description: "Words shatter in and explode out" },
+  { value: "pulse-smoke",      label: "Pulse Smoke",       description: "Text emerges from smoke, pulses, dissolves" },
 ];
 
 export function AnimationVariantControl({ overlayId, variants, defaultVariant, sectionLabel }: Props) {

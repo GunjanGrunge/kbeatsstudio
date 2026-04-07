@@ -51,6 +51,52 @@ function Ripple({ progress, color }: { progress: number; color: string }) {
   );
 }
 
+/* ─── Confetti particle ─── */
+const CONFETTI_COLORS = ["#ff0000", "#ccff00", "#ffaa00", "#ff4444", "#4488ff", "#ff66cc", "#00ffcc"];
+const CONFETTI_PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+  angle: (i / 22) * Math.PI * 2,
+  speed: 1.2 + (i % 5) * 0.4,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  size: 4 + (i % 3) * 3,
+  rotationSpeed: (i % 2 === 0 ? 1 : -1) * (3 + (i % 4) * 2),
+  delay: (i % 4) * 2,
+}));
+
+function ConfettiBurst({ relFrame, startFrame }: { relFrame: number; startFrame: number }) {
+  const f = relFrame - startFrame;
+  if (f < 0 || f > 60) return null;
+  return (
+    <div style={{ position: "absolute", left: "50%", top: "50%", pointerEvents: "none" }}>
+      {CONFETTI_PARTICLES.map((p, i) => {
+        const pf = Math.max(0, f - p.delay);
+        const progress = pf / 55;
+        const dist = interpolate(pf, [0, 55], [0, p.speed * 90], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const x = Math.cos(p.angle) * dist;
+        const y = Math.sin(p.angle) * dist + (progress * progress * 60); // gravity
+        const particleOpacity = interpolate(pf, [0, 4, 40, 55], [0, 1, 0.8, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const rotation = p.rotationSpeed * pf;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              width: p.size,
+              height: p.size * 0.5,
+              background: p.color,
+              left: x,
+              top: y,
+              transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+              opacity: particleOpacity,
+              borderRadius: 1,
+              boxShadow: `0 0 4px ${p.color}88`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─── Notification badge ─── */
 function NotifBadge({ scale }: { scale: number }) {
   return (
@@ -347,6 +393,9 @@ export function YouTubeSubscribe({ overlay }: Props) {
           {channelName}
         </span>
       </div>
+
+      {/* ── Confetti burst on subscribe ── */}
+      <ConfettiBurst relFrame={relFrame} startFrame={T_SUBSCRIBED} />
 
       {/* ── Subscribe / Subscribed button ── */}
       <div style={{ position: "relative" }}>

@@ -6,6 +6,26 @@ interface Props {
   overlay: OverlayConfig;
 }
 
+// Floating particle for heart-pop and click variants
+function FloatingParticle({
+  x, y, scale, opacity, children,
+}: { x: number; y: number; scale: number; opacity: number; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${scale})`,
+        opacity,
+        pointerEvents: "none",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function YouTubeLike({ overlay }: Props) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -14,7 +34,7 @@ export function YouTubeLike({ overlay }: Props) {
 
   const variant = (overlay.animationVariant ?? "pulse") as LikeVariant;
 
-  // Entrance spring (shared across all variants)
+  // Entrance spring
   const entranceScale = spring({
     frame: relFrame,
     fps,
@@ -29,9 +49,10 @@ export function YouTubeLike({ overlay }: Props) {
     extrapolateRight: "clamp",
   });
 
-  // --- Variant-specific idle animations ---
+  const opacity = (overlay.opacity ?? 1) * fadeOut;
+  const componentScale = overlay.componentScale ?? 1;
 
-  // pulse (fixed): direct interpolation instead of broken spring
+  // ── pulse ──
   const pulseCycle = relFrame % 45;
   const pulseScale =
     variant === "pulse"
@@ -41,31 +62,14 @@ export function YouTubeLike({ overlay }: Props) {
         })
       : 1;
 
-  // heart-pop: red flash every 60 frames
-  const heartCycle = relFrame % 60;
-  const heartFillAlpha =
-    variant === "heart-pop"
-      ? interpolate(heartCycle, [0, 5, 15], [0, 1, 0], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
-      : 0;
-  const heartFlashScale =
-    variant === "heart-pop"
-      ? interpolate(heartCycle, [0, 12], [0, 2], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
-      : 0;
-  const heartFlashOpacity =
-    variant === "heart-pop"
-      ? interpolate(heartCycle, [0, 6, 12], [0.6, 0.3, 0], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
-      : 0;
+  // Sonar ring: expands outward on each pulse beat (cycle of 45 frames)
+  const sonarProgress = variant === "pulse"
+    ? interpolate(pulseCycle, [0, 40], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 0;
+  const sonarScale = interpolate(sonarProgress, [0, 1], [1, 2.8]);
+  const sonarOpacity = interpolate(sonarProgress, [0, 0.15, 0.7, 1], [0, 0.55, 0.2, 0]);
 
-  // bounce: thumb bounces up/down
+  // ── bounce ──
   const bounceCycle = relFrame % 30;
   const bounceY =
     variant === "bounce"
@@ -75,41 +79,87 @@ export function YouTubeLike({ overlay }: Props) {
         })
       : 0;
 
-  // click: filled state + scale burst every 75 frames
-  const clickCycle = relFrame % 75;
-  const clickBurst =
-    variant === "click"
-      ? interpolate(clickCycle, [0, 4, 10, 20], [1, 1.3, 0.9, 1], {
+  // ── heart-pop ──
+  // Phase 1 (0–18f): thumb visible, fades out
+  // Phase 2 (12–28f): heart pops in (spring scale)
+  // Phase 3 (22–80f): hearts float upward in waves
+  const HEART_SWITCH = 15; // frame when thumb→heart swap happens
+  const heartPopSpring = spring({
+    frame: Math.max(0, relFrame - HEART_SWITCH),
+    fps,
+    config: { damping: 6, stiffness: 500, mass: 0.35 },
+    from: 0,
+    to: 1,
+  });
+  const showHeart = variant === "heart-pop" && relFrame >= HEART_SWITCH;
+  const thumbFadeForHeart =
+    variant === "heart-pop"
+      ? interpolate(relFrame, [HEART_SWITCH - 4, HEART_SWITCH + 4], [1, 0], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
         })
       : 1;
-  const clickRingScale =
-    variant === "click"
-      ? interpolate(clickCycle, [0, 20], [0.5, 2], {
+  const heartIconScale = showHeart ? interpolate(heartPopSpring, [0, 0.4, 0.7, 1], [0, 1.4, 0.9, 1]) : 0;
+  const heartIconOpacity = showHeart ? interpolate(heartPopSpring, [0, 0.1, 1], [0, 1, 1]) : 0;
+
+  // Floating hearts — 6 hearts, staggered offsets, cycling every 80 frames
+  const HEART_PARTICLES = [
+    { xOffset: -18, delay: 22, xDrift: -12 },
+    { xOffset: 0,   delay: 26, xDrift: 4   },
+    { xOffset: 18,  delay: 30, xDrift: 16  },
+    { xOffset: -8,  delay: 36, xDrift: -20 },
+    { xOffset: 10,  delay: 40, xDrift: 8   },
+    { xOffset: -24, delay: 44, xDrift: -6  },
+  ];
+
+  // ── click ──
+  // Phase 0–10f: cursor slides in from upper-right
+  // Phase 10–20f: cursor presses down (scale shrink) — button highlights
+  // Phase 18–30f: button "liked" state snaps in (blue fill, scale burst)
+  // Phase 25–80f: small thumb icons rise up
+  const CLICK_PRESS = 12;
+  const CLICK_LIKED = 20;
+  const cursorEnter = spring({
+    frame: relFrame,
+    fps,
+    config: { damping: 14, stiffness: 260, mass: 0.7 },
+    from: 0,
+    to: 1,
+  });
+  const cursorX = interpolate(cursorEnter, [0, 1], [55, 22]);
+  const cursorY = interpolate(cursorEnter, [0, 1], [-40, -8]);
+  const cursorPressScale =
+    variant === "click" && relFrame >= CLICK_PRESS && relFrame < CLICK_LIKED
+      ? interpolate(relFrame, [CLICK_PRESS, CLICK_PRESS + 5, CLICK_LIKED], [1, 0.7, 1], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
         })
-      : 0;
-  const clickRingOpacity =
-    variant === "click"
-      ? interpolate(clickCycle, [0, 8, 20], [0.7, 0.3, 0], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
-      : 0;
+      : 1;
 
-  const thumbFill =
-    variant === "click"
-      ? "#4488ff"
-      : variant === "heart-pop"
-      ? `rgba(255, 68, 68, ${heartFillAlpha})`
-      : "white";
+  const isLiked = variant === "click" && relFrame >= CLICK_LIKED;
+  const likePopSpring = spring({
+    frame: Math.max(0, relFrame - CLICK_LIKED),
+    fps,
+    config: { damping: 6, stiffness: 500, mass: 0.35 },
+    from: 0,
+    to: 1,
+  });
+  const likedButtonScale = isLiked ? interpolate(likePopSpring, [0, 0.4, 0.7, 1], [0.85, 1.3, 0.92, 1]) : 1;
 
-  const opacity = (overlay.opacity ?? 1) * fadeOut;
-  const componentScale = overlay.componentScale ?? 1;
+  // Rising thumb particles after like
+  const THUMB_PARTICLES = [
+    { xOffset: -20, delay: CLICK_LIKED + 5,  xDrift: -14 },
+    { xOffset: 0,   delay: CLICK_LIKED + 9,  xDrift: 6   },
+    { xOffset: 20,  delay: CLICK_LIKED + 13, xDrift: 18  },
+    { xOffset: -10, delay: CLICK_LIKED + 18, xDrift: -8  },
+    { xOffset: 12,  delay: CLICK_LIKED + 22, xDrift: -16 },
+  ];
 
-  const idleScale = variant === "pulse" ? pulseScale : variant === "click" ? clickBurst : 1;
+  const idleScale = variant === "pulse" ? pulseScale : isLiked ? likedButtonScale : 1;
+  const thumbColor = isLiked ? "#4488ff" : "#ffffff";
+  const labelColor = isLiked ? "#4488ff" : "#ffffff";
+  const buttonBorder = isLiked ? "1px solid rgba(68,136,255,0.4)" : "1px solid rgba(255,255,255,0.1)";
+  const buttonBg = isLiked ? "rgba(68,136,255,0.12)" : "rgba(0,0,0,0.75)";
 
   return (
     <div
@@ -121,74 +171,135 @@ export function YouTubeLike({ overlay }: Props) {
         opacity,
       }}
     >
-      {/* Click ring */}
-      {variant === "click" && (
+      {/* ── heart-pop: floating hearts ── */}
+      {variant === "heart-pop" && HEART_PARTICLES.map((p, i) => {
+        const pFrame = relFrame - p.delay;
+        if (pFrame < 0) return null;
+        // cycle every 80 frames after initial delay
+        const cycleFrame = pFrame % 80;
+        const pY = interpolate(cycleFrame, [0, 60], [0, -90], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const pX = interpolate(cycleFrame, [0, 60], [p.xOffset, p.xOffset + p.xDrift], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const pOpacity = interpolate(cycleFrame, [0, 8, 45, 60], [0, 0.9, 0.7, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const pScale = interpolate(cycleFrame, [0, 6, 60], [0, 1, 0.5], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        return (
+          <FloatingParticle key={i} x={pX} y={pY} scale={pScale} opacity={pOpacity}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#ff4455">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </FloatingParticle>
+        );
+      })}
+
+      {/* ── click: rising thumb icons ── */}
+      {variant === "click" && isLiked && THUMB_PARTICLES.map((p, i) => {
+        const pFrame = relFrame - p.delay;
+        if (pFrame < 0) return null;
+        const cycleFrame = pFrame % 90;
+        const pY = interpolate(cycleFrame, [0, 65], [0, -100], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const pX = interpolate(cycleFrame, [0, 65], [p.xOffset, p.xOffset + p.xDrift], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const pOpacity = interpolate(cycleFrame, [0, 8, 50, 65], [0, 1, 0.8, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const pScale = interpolate(cycleFrame, [0, 6, 65], [0, 1, 0.4], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        return (
+          <FloatingParticle key={i} x={pX} y={pY} scale={pScale} opacity={pOpacity}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#4488ff">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+              <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+            </svg>
+          </FloatingParticle>
+        );
+      })}
+
+      {/* ── click: cursor SVG ── */}
+      {variant === "click" && relFrame < CLICK_LIKED + 8 && (
         <div
           style={{
             position: "absolute",
-            inset: 0,
+            left: "50%",
+            top: "50%",
+            transform: `translate(calc(-50% + ${cursorX}px), calc(-50% + ${cursorY}px)) scale(${cursorPressScale})`,
+            pointerEvents: "none",
+            zIndex: 10,
+            opacity: interpolate(relFrame, [0, 4, CLICK_LIKED + 2, CLICK_LIKED + 8], [0, 1, 1, 0], {
+              extrapolateLeft: "clamp", extrapolateRight: "clamp",
+            }),
+          }}
+        >
+          <svg width="22" height="28" viewBox="0 0 22 28" fill="none">
+            <path
+              d="M4 2 L4 18 L7.5 14.5 L10 20 L12.5 19 L10 13 L15 13 Z"
+              fill="white"
+              stroke="#333"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      )}
+
+      {/* ── Pulse sonar ring ── */}
+      {variant === "pulse" && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: `translate(-50%, -50%) scale(${sonarScale})`,
+            opacity: sonarOpacity,
             borderRadius: 40,
-            border: "2px solid rgba(68,136,255,0.6)",
-            transform: `scale(${clickRingScale})`,
-            opacity: clickRingOpacity,
+            border: "2px solid rgba(255,255,255,0.6)",
+            // match the pill shape roughly
+            width: 140,
+            height: 52,
             pointerEvents: "none",
           }}
         />
       )}
 
-      {/* Heart-pop radial flash */}
-      {variant === "heart-pop" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "50%",
-            background: "rgba(255,68,68,0.3)",
-            transform: `scale(${heartFlashScale})`,
-            opacity: heartFlashOpacity,
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
+      {/* ── Main button pill ── */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 10,
-          background: "rgba(0,0,0,0.75)",
+          background: buttonBg,
           backdropFilter: "blur(12px)",
           borderRadius: 40,
           padding: "12px 20px",
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: buttonBorder,
           transform: `scale(${idleScale})`,
+          boxShadow: isLiked ? "0 0 20px rgba(68,136,255,0.25)" : "none",
+          transition: "box-shadow 0.2s",
         }}
       >
-        {/* Thumb up */}
-        <div style={{ transform: `translateY(${bounceY}px)` }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill={thumbFill} style={{ flexShrink: 0 }}>
-            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
-            <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-          </svg>
-        </div>
+        {/* Thumb up — hidden when heart-pop shows heart */}
+        {!(variant === "heart-pop" && showHeart) && (
+          <div style={{ transform: `translateY(${bounceY}px)`, opacity: variant === "heart-pop" ? thumbFadeForHeart : 1 }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill={thumbColor} style={{ flexShrink: 0, display: "block" }}>
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+              <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+            </svg>
+          </div>
+        )}
+
+        {/* Heart icon — only in heart-pop after switch */}
+        {variant === "heart-pop" && (
+          <div style={{ transform: `scale(${heartIconScale})`, opacity: heartIconOpacity, position: showHeart ? "relative" : "absolute" }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#ff4455" style={{ flexShrink: 0, display: "block" }}>
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </div>
+        )}
 
         <span
           style={{
             fontFamily: "Outfit, sans-serif",
             fontWeight: 600,
             fontSize: 18,
-            color: variant === "click" ? "#4488ff" : "#ffffff",
+            color: variant === "heart-pop" && showHeart ? "#ff4455" : labelColor,
           }}
         >
-          Like
+          {variant === "heart-pop" && showHeart ? "Liked" : isLiked ? "Liked" : "Like"}
         </span>
-
-        <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.2)" }} />
-
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)">
-          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
-          <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
-        </svg>
       </div>
     </div>
   );

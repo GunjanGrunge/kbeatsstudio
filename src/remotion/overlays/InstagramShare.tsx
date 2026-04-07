@@ -1,4 +1,19 @@
 import { useCurrentFrame, spring, interpolate, useVideoConfig, Img } from "remotion";
+
+/* ── Cursor SVG ── */
+function ShareCursor({ clicking }: { clicking: boolean }) {
+  return (
+    <svg width="24" height="30" viewBox="0 0 24 30" fill="none">
+      <path
+        d="M4 2L4 22L8.5 17.5L11.5 25L14 24L11 16.5L17.5 16.5L4 2Z"
+        fill={clicking ? "#ccff00" : "white"}
+        stroke={clicking ? "#88cc00" : "rgba(0,0,0,0.5)"}
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 import type { OverlayConfig } from "@/types/studio";
 
 interface Props {
@@ -17,9 +32,9 @@ const T_SENT       = 98;
 const T_IDLE       = 110;
 
 const FRIENDS = [
-  { name: "Close Friend", initial: "★", color: "#ff6b6b", delay: T_FRIEND_1 },
-  { name: "Best Friend",  initial: "♫", color: "#4ecdc4", delay: T_FRIEND_2 },
-  { name: "Reel Friend",  initial: "▶", color: "#ffe66d", delay: T_FRIEND_3 },
+  { name: "Music Friends", initial: "♫", color: "#4ecdc4", delay: T_FRIEND_1 },
+  { name: "Beat Lovers",   initial: "★", color: "#ff6b6b", delay: T_FRIEND_2 },
+  { name: "All Followers", initial: "▶", color: "#ffe66d", delay: T_FRIEND_3 },
 ];
 
 export function InstagramShare({ overlay }: Props) {
@@ -43,6 +58,47 @@ export function InstagramShare({ overlay }: Props) {
   const accent        = overlay.accentColor     ?? "#ccff00";
   const fontFamily    = overlay.font?.family ? `'${overlay.font.family}', sans-serif` : "Outfit, sans-serif";
   const titleColor    = overlay.color ?? "#F7F6E5";
+  const channelLabel  = overlay.channelName ?? "K BEATS";
+
+  /* ── Send button cursor timing ── */
+  // Cursor slides in before the share button tap, hovers, clicks, then retreats
+  const T_CURSOR_APPEAR = T_SHARE_BTN - 12; // 2 frames before tap
+  const T_CURSOR_HOVER  = T_SHARE_BTN - 4;
+  const T_CURSOR_CLICK  = T_SHARE_BTN;
+  const T_CURSOR_LEAVE  = T_SHARE_BTN + 16;
+
+  const cursorFadeIn = interpolate(relFrame, [T_CURSOR_APPEAR, T_CURSOR_APPEAR + 6], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const cursorFadeOut = interpolate(relFrame, [T_CURSOR_LEAVE, T_CURSOR_LEAVE + 10], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const cursorOpacity = Math.min(cursorFadeIn, cursorFadeOut);
+
+  // Cursor moves in from upper-right toward the share button icon
+  const cursorX = interpolate(
+    relFrame,
+    [T_CURSOR_APPEAR, T_CURSOR_HOVER, T_CURSOR_CLICK, T_CURSOR_LEAVE],
+    [90, 48, 48, 90],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const cursorY = interpolate(
+    relFrame,
+    [T_CURSOR_APPEAR, T_CURSOR_HOVER, T_CURSOR_CLICK, T_CURSOR_LEAVE],
+    [-30, -10, -10, -50],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const isCursorClicking = relFrame >= T_CURSOR_CLICK - 1 && relFrame <= T_CURSOR_CLICK + 5;
+  const cursorVisible = relFrame >= T_CURSOR_APPEAR && relFrame < T_CURSOR_LEAVE + 10;
+
+  /* ── Ripple on send button click ── */
+  const sendRippleProgress = interpolate(
+    relFrame,
+    [T_SHARE_BTN, T_SHARE_BTN + 22],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const showSendRipple = relFrame >= T_SHARE_BTN && relFrame < T_SHARE_BTN + 22;
 
   /* ── Card entrance ── */
   const cardScale  = spring({ frame: relFrame, fps, config: { damping: 11, stiffness: 200, mass: 0.85 }, from: 0.55, to: 1 });
@@ -62,7 +118,9 @@ export function InstagramShare({ overlay }: Props) {
   const sheetY       = relFrame >= T_SHEET_OPEN ? interpolate(sheetSpring, [0, 1], [80, 0]) : 80;
   const sheetOpacity = relFrame >= T_SHEET_OPEN ? interpolate(sheetSpring, [0, 0.1, 1], [0, 1, 1]) : 0;
 
-  /* ── Friend tap ── */
+  /* ── Friend tap (send to all) ── */
+  // Each friend gets a staggered "sent" treatment after T_TAP_SEND
+  const SENT_DELAYS = [T_TAP_SEND, T_TAP_SEND + 5, T_TAP_SEND + 10];
   const tapPulse   = spring({ frame: Math.max(0, relFrame - T_TAP_SEND), fps, config: { damping: 6, stiffness: 600, mass: 0.4 }, from: 0, to: 1 });
   const friend0Scale = relFrame >= T_TAP_SEND
     ? interpolate(tapPulse, [0, 0.15, 0.5, 1], [1, 0.85, 1.12, 1])
@@ -173,19 +231,39 @@ export function InstagramShare({ overlay }: Props) {
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           ) : (
-            /* Placeholder with music note */
+            /* K Beats logo placeholder */
             <div style={{
               width: "100%", height: "100%",
               display: "flex", alignItems: "center", justifyContent: "center",
-              flexDirection: "column", gap: 8,
+              flexDirection: "column", gap: 10,
+              background: "linear-gradient(135deg, #0d0d18 0%, #111827 50%, #0a1628 100%)",
             }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill={accent} opacity={0.5}>
-                <path d="M9 18V5l12-2v13"/>
-                <circle cx="6" cy="18" r="3"/>
-                <circle cx="18" cy="16" r="3"/>
-              </svg>
-              <span style={{ fontFamily: "Outfit, sans-serif", fontSize: 10, color: `${accent}66`, letterSpacing: 1 }}>
-                Add image
+              {/* K lettermark — matches header branding */}
+              <div style={{
+                width: 52, height: 52, borderRadius: 14,
+                background: `linear-gradient(135deg, ${accent}18 0%, ${accent}35 100%)`,
+                border: `1.5px solid ${accent}50`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 0 22px ${accent}28`,
+              }}>
+                <span style={{
+                  fontFamily: "Unbounded, sans-serif",
+                  fontWeight: 900,
+                  fontSize: 26,
+                  color: accent,
+                  lineHeight: 1,
+                  letterSpacing: -1,
+                }}>K</span>
+              </div>
+              <span style={{
+                fontFamily: "Unbounded, sans-serif",
+                fontSize: 8,
+                fontWeight: 300,
+                color: `${accent}70`,
+                letterSpacing: 3,
+                textTransform: "uppercase" as const,
+              }}>
+                {channelLabel}
               </span>
             </div>
           )}
@@ -228,6 +306,21 @@ export function InstagramShare({ overlay }: Props) {
 
           {/* Animated share/send button */}
           <div style={{ position: "relative", flexShrink: 0, marginLeft: 12 }}>
+            {/* Click ripple ring */}
+            {showSendRipple && (
+              <div style={{
+                position: "absolute",
+                borderRadius: "50%",
+                border: `2px solid ${accent}`,
+                width: interpolate(sendRippleProgress, [0, 1], [16, 72]),
+                height: interpolate(sendRippleProgress, [0, 1], [16, 72]),
+                left: "50%",
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                opacity: interpolate(sendRippleProgress, [0, 0.3, 1], [0.85, 0.5, 0]),
+                pointerEvents: "none",
+              }} />
+            )}
             {shareBtnGlow > 0 && (
               <div style={{
                 position: "absolute", inset: -12, borderRadius: "50%",
@@ -267,11 +360,15 @@ export function InstagramShare({ overlay }: Props) {
           </p>
 
           {FRIENDS.map((f, i) => {
-            const fSpring   = spring({ frame: Math.max(0, relFrame - f.delay), fps, config: { damping: 14, stiffness: 280 }, from: 0, to: 1 });
-            const fOpacity  = relFrame >= f.delay ? interpolate(fSpring, [0, 1], [0, 1]) : 0;
-            const fX        = relFrame >= f.delay ? interpolate(fSpring, [0, 1], [-18, 0]) : -18;
-            const isSentTo  = i === 0 && relFrame >= T_TAP_SEND;
-            const fScale    = i === 0 ? friend0Scale : 1;
+            const fSpring    = spring({ frame: Math.max(0, relFrame - f.delay), fps, config: { damping: 14, stiffness: 280 }, from: 0, to: 1 });
+            const fOpacity   = relFrame >= f.delay ? interpolate(fSpring, [0, 1], [0, 1]) : 0;
+            const fX         = relFrame >= f.delay ? interpolate(fSpring, [0, 1], [-18, 0]) : -18;
+            const sentDelay  = SENT_DELAYS[i];
+            const isSentTo   = relFrame >= sentDelay;
+            const fCheckSpring = spring({ frame: Math.max(0, relFrame - sentDelay), fps, config: { damping: 10, stiffness: 340, mass: 0.6 }, from: 0, to: 1 });
+            const checkScale  = isSentTo ? interpolate(fCheckSpring, [0, 0.5, 1], [0, 1.2, 1]) : 0;
+            const checkOpacity = isSentTo ? interpolate(fCheckSpring, [0, 0.1, 1], [0, 1, 1]) : 0;
+            const fScale      = i === 0 ? friend0Scale : 1;
 
             return (
               <div key={i} style={{
@@ -285,7 +382,7 @@ export function InstagramShare({ overlay }: Props) {
                 <div style={{
                   width: 32, height: 32, borderRadius: "50%",
                   background: `${f.color}18`,
-                  border: `1.5px solid ${f.color}55`,
+                  border: `1.5px solid ${isSentTo ? accent + "80" : f.color + "55"}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
                   boxShadow: isSentTo ? `0 0 14px ${f.color}55` : "none",
@@ -302,13 +399,12 @@ export function InstagramShare({ overlay }: Props) {
                   {f.name}
                 </span>
 
-                {isSentTo && (
-                  <div style={{ marginLeft: "auto", transform: `scale(${sentScale})`, opacity: sentOpacity }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  </div>
-                )}
+                {/* Checkmark appears for each friend once sent */}
+                <div style={{ marginLeft: "auto", transform: `scale(${checkScale})`, opacity: checkOpacity }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
               </div>
             );
           })}
@@ -317,6 +413,24 @@ export function InstagramShare({ overlay }: Props) {
           <div style={{ height: 10 }} />
         </div>
       </div>
+
+      {/* ── Send button cursor ── */}
+      {cursorVisible && (
+        <div style={{
+          position: "absolute",
+          right: `calc(0% - ${cursorX}px)`,
+          top: `calc(30% + ${cursorY}px)`,
+          opacity: cursorOpacity,
+          pointerEvents: "none",
+          zIndex: 20,
+          filter: isCursorClicking
+            ? "drop-shadow(0 0 8px rgba(204,255,0,0.9))"
+            : "drop-shadow(0 2px 6px rgba(0,0,0,0.7))",
+          transform: isCursorClicking ? "scale(0.86)" : "scale(1)",
+        }}>
+          <ShareCursor clicking={isCursorClicking} />
+        </div>
+      )}
 
       {/* ── Sent toast ── */}
       {relFrame >= T_SENT && (

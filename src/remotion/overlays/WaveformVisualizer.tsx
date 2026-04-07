@@ -1,5 +1,7 @@
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
-import { useAudioData, visualizeAudio } from "@remotion/media-utils";
+import { useCurrentFrame, useVideoConfig, interpolate, delayRender, continueRender } from "remotion";
+import { getAudioData, visualizeAudio } from "@remotion/media-utils";
+import type { AudioData } from "@remotion/media-utils";
+import { useState, useEffect, useRef } from "react";
 import type { OverlayConfig } from "@/types/studio";
 
 interface Props {
@@ -16,13 +18,16 @@ function BarsVisualizer({
   const bars = frequencies.length;
   const barW = (w / bars) * 0.65;
   const gap = w / bars;
+  // overflow hidden prevents the reflection rect from painting outside the overlay bounds
   return (
-    <svg width={w} height={h} style={{ overflow: "visible" }}>
+    <svg width={w} height={h} style={{ overflow: "hidden" }}>
       {frequencies.map((freq, i) => {
         const barH = Math.max(3, freq * h);
         const x = i * gap + (gap - barW) / 2;
         const y = h - barH;
         const glow = Math.round(freq * 14);
+        // Reflection capped at h * 0.15 so it fits inside the SVG viewport
+        const reflH = Math.min(barH * 0.3, h * 0.15);
         return (
           <g key={i}>
             <rect
@@ -31,9 +36,9 @@ function BarsVisualizer({
               fill={color}
               style={{ filter: `drop-shadow(0 0 ${glow}px ${color})` }}
             />
-            {/* Reflection */}
+            {/* Reflection — positioned just below the bar, within SVG bounds */}
             <rect
-              x={x} y={h + 2} width={barW} height={barH * 0.3}
+              x={x} y={h - reflH} width={barW} height={reflH}
               rx={barW / 2}
               fill={color}
               opacity={0.18}
@@ -52,6 +57,9 @@ function WaveVisualizer({
   frequencies, color, w, h,
 }: { frequencies: number[]; color: string; w: number; h: number }) {
   const bars = frequencies.length;
+  // Need at least 2 points to avoid (bars - 1) = 0 division producing NaN coords
+  if (bars <= 1) return null;
+
   const midY = h / 2;
 
   // Build smooth cubic bezier path through points
@@ -71,22 +79,8 @@ function WaveVisualizer({
     d += ` C ${cpX} ${prev.y}, ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
   }
 
-  // Mirror path for fill
-  const mirrorPoints = [...frequencies].reverse().map((freq, i) => {
-    const origI = bars - 1 - i;
-    const x = (origI / (bars - 1)) * w;
-    const amp = freq * (h / 2) * 0.9;
-    const y = midY - (origI % 2 === 0 ? -amp : amp);
-    return { x, y };
-  });
-  let dMirror = `L ${mirrorPoints[0].x} ${mirrorPoints[0].y}`;
-  for (let i = 1; i < mirrorPoints.length; i++) {
-    const prev = mirrorPoints[i - 1];
-    const curr = mirrorPoints[i];
-    const cpX = (prev.x + curr.x) / 2;
-    dMirror += ` C ${cpX} ${prev.y}, ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
-  }
-  dMirror += " Z";
+  // Close the fill by returning along the midline — creates a non-self-intersecting band
+  const dMirror = ` L ${w} ${midY} L 0 ${midY} Z`;
 
   const maxFreq = Math.max(...frequencies);
   const glowIntensity = Math.round(maxFreq * 18);
@@ -179,7 +173,8 @@ function ParticlesVisualizer({
   const bars = frequencies.length;
   // Use a seeded layout so particles don't jump on re-render
   const particles = frequencies.map((freq, i) => {
-    const seed = (i * 137.508) % 1; // golden angle pseudo-random
+    // Knuth multiplicative hash — evenly distributes across [0, 1) unlike linear % 1
+    const seed = ((i * 2654435761) >>> 0) / 0xFFFFFFFF;
     const baseX = (i / bars) * w;
     const baseY = h * 0.5 + (seed - 0.5) * h * 0.4;
     const jumpY = freq * h * 0.7;
@@ -235,6 +230,9 @@ function OscilloscopeVisualizer({
   frequencies, color, w, h,
 }: { frequencies: number[]; color: string; w: number; h: number }) {
   const bars = frequencies.length;
+  // Need at least 2 points to avoid (bars - 1) = 0 division producing NaN coords
+  if (bars <= 1) return null;
+
   const midY = h / 2;
 
   // Oscilloscope: treat frequency bins as amplitude samples across time
@@ -279,8 +277,8 @@ function OscilloscopeVisualizer({
         strokeLinejoin="round"
         style={{ filter: `drop-shadow(0 0 ${Math.round(maxFreq * 16)}px ${color})` }}
       />
-      {/* Scan dot */}
-      {frequencies.length > 0 && (() => {
+      {/* Scan dot at peak frequency bin */}
+      {(() => {
         const peak = frequencies.reduce((mi, v, i) => v > frequencies[mi] ? i : mi, 0);
         const px = (peak / (bars - 1)) * w;
         const bip = (frequencies[peak] - 0.5) * 2;
@@ -297,23 +295,78 @@ function OscilloscopeVisualizer({
 /* ─────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────── */
+/** Snap n to the nearest power of 2 — required by visualizeAudio. Minimum 16. */
+function nearestPow2(n: number): number {
+  return Math.pow(2, Math.round(Math.log2(Math.max(16, n))));
+}
+
+/** Route private S3 URLs through the media proxy to avoid 403 errors */
+function toProxiedUrl(src: string): string {
+  const match = src.match(/\.amazonaws\.com\/(.+)/);
+  if (match) return `/api/s3/media?key=${encodeURIComponent(match[1])}`;
+  return src;
+}
+
+/**
+ * Safe replacement for useAudioData: uses delayRender/continueRender so Lambda
+ * rendering waits for audio, but calls continueRender (not cancelRender) on
+ * failure — so a 403 or network error shows flat bars instead of crashing the Player.
+ */
+function useSafeAudioData(src: string): AudioData | null {
+  const [audioData, setAudioData] = useState<AudioData | null>(null);
+  const handleRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Create a new delay handle each time src changes
+    const handle = delayRender(`Loading audio for waveform: ${src}`);
+    handleRef.current = handle;
+
+    getAudioData(src)
+      .then((data) => {
+        setAudioData(data);
+        continueRender(handle);
+      })
+      .catch(() => {
+        // On error (e.g. 403 private S3, network failure): show flat waveform,
+        // do NOT call cancelRender — that would crash the Remotion Player.
+        setAudioData(null);
+        continueRender(handle);
+      });
+
+    return () => {
+      // If the component unmounts before the fetch completes, still release the handle
+      if (handleRef.current === handle) {
+        continueRender(handle);
+      }
+    };
+  }, [src]);
+
+  return audioData;
+}
+
 export function WaveformVisualizer({ overlay, audioSrc }: Props) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const audioData = useAudioData(audioSrc);
 
-  const bars = overlay.waveformBars ?? 64;
+  // Route private S3 URLs through the proxy so the fetch works from the browser
+  const proxiedSrc = toProxiedUrl(audioSrc);
+  const audioData = useSafeAudioData(proxiedSrc);
+
+  // visualizeAudio requires numberOfSamples to be a power of 2 (16, 32, 64, 128…)
+  const bars = nearestPow2(overlay.waveformBars ?? 64);
   const color = overlay.waveformColor ?? "#ccff00";
   const opacity = overlay.opacity ?? 0.85;
   const style = overlay.waveformStyle ?? "bars";
 
-  const relFrame = frame;
-  const fadeIn = interpolate(relFrame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
-  const fadeOut = interpolate(relFrame, [overlay.durationInFrames - 8, overlay.durationInFrames], [1, 0], { extrapolateLeft: "clamp" });
+  // frame is relative to the Sequence start; audio position needs the absolute frame
+  const audioFrame = frame + overlay.startFrame;
+
+  const fadeIn = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
+  const fadeOut = interpolate(frame, [overlay.durationInFrames - 8, overlay.durationInFrames], [1, 0], { extrapolateLeft: "clamp" });
   const alpha = Math.min(fadeIn, fadeOut) * opacity;
 
   const frequencies = audioData
-    ? visualizeAudio({ fps, frame, audioData, numberOfSamples: bars })
+    ? visualizeAudio({ fps, frame: audioFrame, audioData, numberOfSamples: bars })
     : new Array(bars).fill(0.05);
 
   // Dimensions vary by style

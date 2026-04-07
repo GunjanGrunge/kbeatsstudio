@@ -156,35 +156,31 @@ export function WaveformControl({ overlayId }: Props) {
         </div>
       </div>
 
-      {/* ── Bar / sample count (hide for circular which uses its own density) ── */}
-      {activeStyle !== "circular" && (
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
-            <span>{activeStyle === "particles" ? "Particles" : activeStyle === "oscilloscope" ? "Samples" : "Bars"}</span>
-            <span>{bars}</span>
-          </div>
-          <Slider
-            min={16} max={128} step={4}
-            value={[bars]}
-            onValueChange={(vals) => updateOverlay(overlayId, { waveformBars: (vals as number[])[0] })}
-          />
+      {/* ── Bar / sample count — must be a power of 2 for visualizeAudio ── */}
+      <div className="space-y-2">
+        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
+          <span>{activeStyle === "particles" ? "Particles" : activeStyle === "oscilloscope" ? "Samples" : activeStyle === "circular" ? "Spokes" : "Bars"}</span>
+          <span>{bars}</span>
         </div>
-      )}
-
-      {/* Circular density */}
-      {activeStyle === "circular" && (
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
-            <span>Spokes</span>
-            <span>{bars}</span>
-          </div>
-          <Slider
-            min={32} max={128} step={8}
-            value={[bars]}
-            onValueChange={(vals) => updateOverlay(overlayId, { waveformBars: (vals as number[])[0] })}
-          />
+        <div className="grid grid-cols-4 gap-1.5">
+          {([16, 32, 64, 128] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => updateOverlay(overlayId, { waveformBars: v })}
+              className="py-1.5 rounded-lg text-[10px] transition-all duration-150"
+              style={{
+                background: bars === v ? "rgba(204,255,0,0.08)" : "rgba(255,255,255,0.03)",
+                border: `1px solid ${bars === v ? "rgba(204,255,0,0.4)" : "rgba(255,255,255,0.06)"}`,
+                color: bars === v ? "#ccff00" : "#555555",
+                fontFamily: "Outfit, sans-serif",
+                fontWeight: bars === v ? 600 : 400,
+              }}
+            >
+              {v}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* ── Color ── */}
       <div className="space-y-2">

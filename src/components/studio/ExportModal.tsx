@@ -8,27 +8,14 @@ import { useStudioStore } from "@/store/studioStore";
 import { useRenderProgress } from "@/hooks/useRenderProgress";
 import { TEMPLATES } from "@/types/studio";
 import type { KBeatsInputProps } from "@/types/studio";
+import { parseTimecodeToSeconds } from "@/lib/parseTimecode";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-// Parse "m:ss" or "ss" or "ss.s" into seconds
-function parseTime(input: string): number | null {
-  const t = input.trim();
-  const colonMatch = t.match(/^(\d+):(\d{1,2})(?:\.(\d))?$/);
-  if (colonMatch) {
-    const m = parseInt(colonMatch[1]);
-    const s = parseInt(colonMatch[2]);
-    const tenth = colonMatch[3] ? parseInt(colonMatch[3]) / 10 : 0;
-    if (s >= 60) return null;
-    return m * 60 + s + tenth;
-  }
-  const numMatch = t.match(/^(\d+(?:\.\d+)?)$/);
-  if (numMatch) return parseFloat(numMatch[1]);
-  return null;
-}
+const parseTime = parseTimecodeToSeconds;
 
 function fmtTime(secs: number): string {
   const m = Math.floor(secs / 60);
@@ -46,6 +33,10 @@ export function ExportModal({ open, onClose }: Props) {
   const overlays = useStudioStore((s) => s.overlays);
   const backgroundColor = useStudioStore((s) => s.backgroundColor);
   const backgroundOpacity = useStudioStore((s) => s.backgroundOpacity);
+  const inMarker = useStudioStore((s) => s.inMarker);
+  const outMarker = useStudioStore((s) => s.outMarker);
+  const setInMarker = useStudioStore((s) => s.setInMarker);
+  const setOutMarker = useStudioStore((s) => s.setOutMarker);
 
   const fps = template.fps;
   const totalSecs = durationInFrames / fps;
@@ -58,14 +49,19 @@ export function ExportModal({ open, onClose }: Props) {
   const [trimEnd, setTrimEnd] = useState(totalSecs);
   const [trimStartInput, setTrimStartInput] = useState("0:00");
   const [trimEndInput, setTrimEndInput] = useState(fmtTime(totalSecs));
+  const [usingMarkers, setUsingMarkers] = useState(false);
 
-  // Reset trim when modal opens
+  // Pre-populate from timeline markers when modal opens; fall back to full duration
   useEffect(() => {
     if (open) {
-      setTrimStart(0);
-      setTrimEnd(totalSecs);
-      setTrimStartInput("0:00");
-      setTrimEndInput(fmtTime(totalSecs));
+      const hasMarkers = inMarker !== null && outMarker !== null && outMarker > inMarker;
+      const start = hasMarkers ? inMarker! / fps : 0;
+      const end = hasMarkers ? outMarker! / fps : totalSecs;
+      setTrimStart(start);
+      setTrimEnd(end);
+      setTrimStartInput(fmtTime(start));
+      setTrimEndInput(fmtTime(end));
+      setUsingMarkers(hasMarkers);
       setSelectedTemplateId(template.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -256,10 +252,42 @@ export function ExportModal({ open, onClose }: Props) {
                   <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
                     Trim
                   </p>
+                  {usingMarkers && (
+                    <span
+                      className="text-[8px] px-1.5 py-0.5 rounded-full"
+                      style={{
+                        fontFamily: "Outfit, sans-serif",
+                        background: "rgba(204,255,0,0.1)",
+                        color: "#ccff00",
+                        border: "1px solid rgba(204,255,0,0.3)",
+                      }}
+                    >
+                      from markers
+                    </span>
+                  )}
                   <span className="ml-auto text-[10px] tabular-nums" style={{ fontFamily: "Outfit, sans-serif", color: "#ccff00" }}>
                     {fmtSec(Math.round(trimDuration))}
                   </span>
                 </div>
+
+                {/* Clear markers link */}
+                {usingMarkers && (
+                  <button
+                    className="text-[9px] text-[#555] hover:text-[#888] transition-colors"
+                    style={{ fontFamily: "Outfit, sans-serif" }}
+                    onClick={() => {
+                      setInMarker(null);
+                      setOutMarker(null);
+                      setTrimStart(0);
+                      setTrimEnd(totalSecs);
+                      setTrimStartInput("0:00");
+                      setTrimEndInput(fmtTime(totalSecs));
+                      setUsingMarkers(false);
+                    }}
+                  >
+                    Clear markers and use full duration
+                  </button>
+                )}
 
                 {/* Visual range bar */}
                 <div className="relative h-6 rounded-md overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid #222" }}>

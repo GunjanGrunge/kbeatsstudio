@@ -193,6 +193,18 @@ function ShareControls({ overlayId }: { overlayId: string }) {
         Share Card
       </p>
 
+      {/* Channel / brand name (shown in thumbnail placeholder) */}
+      <div className="space-y-1">
+        <Label className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Channel Name</Label>
+        <Input
+          value={overlay.channelName ?? ""}
+          onChange={(e) => updateOverlay(overlayId, { channelName: e.target.value })}
+          placeholder="K BEATS"
+          className="h-8 text-xs bg-[rgba(255,255,255,0.05)] border-[#333] text-white"
+          style={{ fontFamily: "Outfit, sans-serif" }}
+        />
+      </div>
+
       {/* Song title */}
       <div className="space-y-1">
         <Label className="text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>Song / Title</Label>
