@@ -296,20 +296,20 @@ export function ExportModal({ open, onClose }: Props) {
                   </button>
                 )}
 
-                {/* Visual range bar */}
-                <div className="relative h-6 rounded-md overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid #222" }}>
-                  {/* Filled range */}
+                {/* Visual range bar — two-handle trim slider */}
+                <div className="relative h-6 rounded-md" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid #222" }}>
+                  {/* Filled range highlight */}
                   <div
-                    className="absolute inset-y-0 rounded-sm"
+                    className="absolute inset-y-0 pointer-events-none"
                     style={{
                       left: `${(trimStart / totalSecs) * 100}%`,
                       width: `${(trimDuration / totalSecs) * 100}%`,
                       background: "rgba(204,255,0,0.15)",
-                      borderLeft: "2px solid #ccff00",
-                      borderRight: "2px solid #ccff00",
+                      borderLeft: "2px solid #4ade80",
+                      borderRight: "2px solid #f87171",
                     }}
                   />
-                  {/* Start drag handle */}
+                  {/* Start handle (green) — z-index higher when near start */}
                   <input
                     type="range" min={0} max={totalSecs} step={0.1}
                     value={trimStart}
@@ -317,10 +317,33 @@ export function ExportModal({ open, onClose }: Props) {
                       const v = Math.min(parseFloat(e.target.value), trimEnd - 0.5);
                       setTrimStart(v);
                       setTrimStartInput(fmtTime(v));
+                      setUsingMarkers(false);
                     }}
-                    className="absolute inset-0 w-full opacity-0 cursor-pointer"
-                    style={{ zIndex: 2 }}
+                    className="absolute inset-0 w-full cursor-pointer"
+                    style={{ zIndex: trimStart / totalSecs > 0.5 ? 4 : 3, opacity: 0, height: "100%" }}
                   />
+                  {/* End handle (red) */}
+                  <input
+                    type="range" min={0} max={totalSecs} step={0.1}
+                    value={trimEnd}
+                    onChange={(e) => {
+                      const v = Math.max(parseFloat(e.target.value), trimStart + 0.5);
+                      setTrimEnd(v);
+                      setTrimEndInput(fmtTime(v));
+                      setUsingMarkers(false);
+                    }}
+                    className="absolute inset-0 w-full cursor-pointer"
+                    style={{ zIndex: trimStart / totalSecs > 0.5 ? 3 : 4, opacity: 0, height: "100%" }}
+                  />
+                  {/* Handle labels */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center">
+                    <div style={{ position: "absolute", left: `${(trimStart / totalSecs) * 100}%`, transform: "translateX(-50%)" }}>
+                      <div style={{ width: 4, height: 16, background: "#4ade80", borderRadius: 2 }} />
+                    </div>
+                    <div style={{ position: "absolute", left: `${(trimEnd / totalSecs) * 100}%`, transform: "translateX(-50%)" }}>
+                      <div style={{ width: 4, height: 16, background: "#f87171", borderRadius: 2 }} />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Start / End inputs */}

@@ -513,15 +513,15 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
                 />
               )}
 
-              {/* In marker triangle — draggable */}
+              {/* In marker triangle — draggable, points UP (green) */}
               {inMarker !== null && (
                 <div
                   style={{
                     position: "absolute",
-                    left: inMarker * pxPerFrame - 5,
+                    left: inMarker * pxPerFrame - 8,
                     top: 0,
-                    width: 10,
-                    height: 10,
+                    width: 16,
+                    height: 16,
                     cursor: "ew-resize",
                     zIndex: 15,
                   }}
@@ -543,21 +543,21 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
                     window.addEventListener("mouseup", onUp);
                   }}
                 >
-                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "block" }}>
-                    <polygon points="5,10 0,0 10,0" fill="#4ade80" />
+                  <svg width="16" height="16" viewBox="0 0 16 16" style={{ display: "block" }}>
+                    <polygon points="8,0 0,16 16,16" fill="#4ade80" />
                   </svg>
                 </div>
               )}
 
-              {/* Out marker triangle — draggable */}
+              {/* Out marker triangle — draggable, points DOWN (red) */}
               {outMarker !== null && (
                 <div
                   style={{
                     position: "absolute",
-                    left: outMarker * pxPerFrame - 5,
+                    left: outMarker * pxPerFrame - 8,
                     top: 0,
-                    width: 10,
-                    height: 10,
+                    width: 16,
+                    height: 16,
                     cursor: "ew-resize",
                     zIndex: 15,
                   }}
@@ -579,8 +579,8 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
                     window.addEventListener("mouseup", onUp);
                   }}
                 >
-                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "block" }}>
-                    <polygon points="5,10 0,0 10,0" fill="#f87171" />
+                  <svg width="16" height="16" viewBox="0 0 16 16" style={{ display: "block" }}>
+                    <polygon points="8,16 0,0 16,0" fill="#f87171" />
                   </svg>
                 </div>
               )}
