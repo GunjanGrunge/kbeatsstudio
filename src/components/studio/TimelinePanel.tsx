@@ -6,7 +6,7 @@ import { useStudioStore } from "@/store/studioStore";
 import { sharedFrameRef } from "@/lib/sharedRefs";
 import type { OverlayConfig, OverlayType, LyricLine } from "@/types/studio";
 import {
-  Music2, PlayCircle, Camera, Waves, Type, Image, LucideProps,
+  Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, LucideProps,
   Play, Pause, SkipBack, ZoomIn, ZoomOut, Plus,
 } from "lucide-react";
 
@@ -29,6 +29,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ComponentType<LucideProps>> = {
   waveform: Waves,
   text: Type,
   image: Image,
+  "motion-background": Sparkles,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
@@ -39,9 +40,10 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   "ig-share": "#833ab4",
   lyrics: "#ccff00",
   "lyrics-chords": "#a8d400",
-  waveform: "#00e5ff",
+  waveform: "#ccff00",
   text: "#F7F6E5",
   image: "#ff9900",
+  "motion-background": "#aa44ff",
 };
 
 /* ── helpers ───────────────────────────────────────────────── */
@@ -302,6 +304,10 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
   const currentFrame = useStudioStore((s) => s.currentFrame);
   const setCurrentFrameStore = useStudioStore((s) => s.setCurrentFrame);
   const selectedLyricLineIndex = useStudioStore((s) => s.selectedLyricLineIndex);
+  const inMarker = useStudioStore((s) => s.inMarker);
+  const outMarker = useStudioStore((s) => s.outMarker);
+  const setInMarker = useStudioStore((s) => s.setInMarker);
+  const setOutMarker = useStudioStore((s) => s.setOutMarker);
   const [zoom, setZoom] = useState(1);
 
   // Single scroll container ref — ruler + tracks scroll together as one unit
@@ -383,6 +389,46 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
           onClick={() => setZoom((z) => Math.min(MAX_ZOOM, +(z * 1.4).toFixed(2)))}>
           <ZoomIn size={13} />
         </button>
+
+        {/* ── Marker divider ── */}
+        <div style={{ width: 1, height: 16, background: "#222", marginLeft: 4 }} />
+
+        {/* In marker button */}
+        <button
+          title={inMarker !== null ? `In: ${fmtTime(inMarker, fps)} — click to clear` : "Set In marker at playhead"}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors"
+          style={{
+            background: inMarker !== null ? "rgba(74,222,128,0.12)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${inMarker !== null ? "rgba(74,222,128,0.4)" : "rgba(255,255,255,0.08)"}`,
+            color: inMarker !== null ? "#4ade80" : "#666",
+            fontFamily: "Outfit, sans-serif",
+          }}
+          onClick={() => inMarker !== null ? setInMarker(null) : setInMarker(sharedFrameRef.current)}
+        >
+          {inMarker !== null ? `I: ${fmtTime(inMarker, fps)}` : "[ I"}
+        </button>
+
+        {/* Out marker button */}
+        <button
+          title={outMarker !== null ? `Out: ${fmtTime(outMarker, fps)} — click to clear` : "Set Out marker at playhead"}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors"
+          style={{
+            background: outMarker !== null ? "rgba(248,113,113,0.12)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${outMarker !== null ? "rgba(248,113,113,0.4)" : "rgba(255,255,255,0.08)"}`,
+            color: outMarker !== null ? "#f87171" : "#666",
+            fontFamily: "Outfit, sans-serif",
+          }}
+          onClick={() => outMarker !== null ? setOutMarker(null) : setOutMarker(sharedFrameRef.current)}
+        >
+          {outMarker !== null ? `O: ${fmtTime(outMarker, fps)}` : "O ]"}
+        </button>
+
+        {/* Show duration between markers if both set */}
+        {inMarker !== null && outMarker !== null && outMarker > inMarker && (
+          <span className="text-[9px] font-mono" style={{ color: "#888", fontFamily: "Outfit, sans-serif" }}>
+            {fmtTime(outMarker - inMarker, fps)}
+          </span>
+        )}
       </div>
 
       {/* ── label column + scrollable content ── */}
@@ -447,6 +493,95 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
                   );
                 });
               })()}
+
+              {/* In/Out marker highlight band */}
+              {inMarker !== null && outMarker !== null && outMarker > inMarker && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: inMarker * pxPerFrame,
+                    top: 0,
+                    width: (outMarker - inMarker) * pxPerFrame,
+                    height: "100%",
+                    background: "rgba(255,255,255,0.04)",
+                    borderLeft: "1px solid rgba(74,222,128,0.5)",
+                    borderRight: "1px solid rgba(248,113,113,0.5)",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+
+              {/* In marker triangle — draggable */}
+              {inMarker !== null && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: inMarker * pxPerFrame - 5,
+                    top: 0,
+                    width: 10,
+                    height: 10,
+                    cursor: "ew-resize",
+                    zIndex: 15,
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const origFrame = inMarker;
+                    const onMove = (ev: MouseEvent) => {
+                      const dx = ev.clientX - startX;
+                      const newFrame = Math.max(0, Math.round(origFrame + dx / pxPerFrameRef.current));
+                      const maxFrame = outMarker !== null ? outMarker - 1 : durationInFrames - 1;
+                      setInMarker(Math.min(newFrame, maxFrame));
+                    };
+                    const onUp = () => {
+                      window.removeEventListener("mousemove", onMove);
+                      window.removeEventListener("mouseup", onUp);
+                    };
+                    window.addEventListener("mousemove", onMove);
+                    window.addEventListener("mouseup", onUp);
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "block" }}>
+                    <polygon points="5,10 0,0 10,0" fill="#4ade80" />
+                  </svg>
+                </div>
+              )}
+
+              {/* Out marker triangle — draggable */}
+              {outMarker !== null && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: outMarker * pxPerFrame - 5,
+                    top: 0,
+                    width: 10,
+                    height: 10,
+                    cursor: "ew-resize",
+                    zIndex: 15,
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const origFrame = outMarker;
+                    const onMove = (ev: MouseEvent) => {
+                      const dx = ev.clientX - startX;
+                      const newFrame = Math.min(durationInFrames, Math.round(origFrame + dx / pxPerFrameRef.current));
+                      const minFrame = inMarker !== null ? inMarker + 1 : 0;
+                      setOutMarker(Math.max(newFrame, minFrame));
+                    };
+                    const onUp = () => {
+                      window.removeEventListener("mousemove", onMove);
+                      window.removeEventListener("mouseup", onUp);
+                    };
+                    window.addEventListener("mousemove", onMove);
+                    window.addEventListener("mouseup", onUp);
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "block" }}>
+                    <polygon points="5,10 0,0 10,0" fill="#f87171" />
+                  </svg>
+                </div>
+              )}
             </div>
 
             {/* Track rows */}

@@ -14,6 +14,7 @@ import { CTAControls } from "@/components/controls/CTAControls";
 import { ImageControls } from "@/components/controls/ImageControls";
 import { AnimationVariantControl, LYRICS_VARIANTS, IMAGE_VARIANTS } from "@/components/controls/AnimationVariantControl";
 import { TextStyleEditor } from "@/components/controls/TextStyleEditor";
+import { MotionBackgroundControl } from "@/components/controls/MotionBackgroundControl";
 import { Slider } from "@/components/ui/slider";
 import { HexColorPicker } from "react-colorful";
 import { useState } from "react";
@@ -83,9 +84,10 @@ export function ControlsPanel() {
   const selectedId = useStudioStore((s) => s.selectedOverlayId);
   const overlay = useStudioStore((s) => s.overlays.find((o) => o.id === selectedId));
 
-  const showTextControls = overlay && ["lyrics", "lyrics-chords", "text"].includes(overlay.type);
+  const showMotionBgControls = overlay?.type === "motion-background";
+  const showTextControls = overlay && !showMotionBgControls && ["lyrics", "lyrics-chords", "text"].includes(overlay.type);
   const showTextStyleEditor = overlay?.type === "text";
-  const showColorControls = overlay && overlay.type !== "waveform" && overlay.type !== "text";
+  const showColorControls = overlay && !showMotionBgControls && overlay.type !== "waveform" && overlay.type !== "text";
   const showLyricsEditor = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
   const showLyricsAnimation = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
   const showWaveformControls = overlay?.type === "waveform";
@@ -144,6 +146,13 @@ export function ControlsPanel() {
               <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
                 <OpacityControl overlayId={overlay.id} />
               </div>
+
+              {/* Motion background controls */}
+              {showMotionBgControls && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <MotionBackgroundControl overlayId={overlay.id} />
+                </div>
+              )}
 
               {/* Image / logo controls */}
               {showImageControls && (

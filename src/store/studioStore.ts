@@ -42,6 +42,10 @@ interface StudioActions {
   addLyricLine: (overlayId: string, line: LyricLine) => void;
   updateLyricLine: (overlayId: string, lineIndex: number, patch: Partial<LyricLine>) => void;
   removeLyricLine: (overlayId: string, lineIndex: number) => void;
+
+  // Timeline markers
+  setInMarker: (frame: number | null) => void;
+  setOutMarker: (frame: number | null) => void;
 }
 
 type StudioStore = ProjectState & StudioActions;
@@ -60,6 +64,8 @@ const DEFAULT_STATE: ProjectState = {
   lastSaved: null,
   backgroundColor: "#050505",
   backgroundOpacity: 1,
+  inMarker: null,
+  outMarker: null,
 };
 
 const DEFAULT_OVERLAY_DURATION = 150; // 5s at 30fps
@@ -182,6 +188,22 @@ function createDefaultOverlay(type: OverlayType, fps: number, startFrame = 0): O
         position: { x: 50, y: 50 },
         animationVariant: "none" as const,
       };
+    case "motion-background":
+      return {
+        ...base,
+        type,
+        position: { x: 50, y: 50 },
+        startFrame: 0,
+        durationInFrames: DEFAULT_STATE.durationInFrames,
+        opacity: 0.7,
+        motionBg: {
+          style: "gradient-shift" as const,
+          colors: ["#0d0d2b", "#1a0533", "#0a1a2e", "#050505"],
+          speed: 1,
+          intensity: 0.8,
+          lyricsSourceId: "all",
+        },
+      };
     default:
       return { ...base, type };
   }
@@ -198,6 +220,7 @@ const OVERLAY_LABELS: Record<OverlayType, string> = {
   waveform: "Waveform",
   text: "Text",
   image: "Image",
+  "motion-background": "Motion Background",
 };
 
 export const useStudioStore = create<StudioStore>()(
@@ -382,6 +405,16 @@ export const useStudioStore = create<StudioStore>()(
           state.selectedOverlayId = clone.id;
           state.isDirty = true;
         }),
+
+      setInMarker: (frame) =>
+        set((state) => {
+          state.inMarker = frame;
+        }),
+
+      setOutMarker: (frame) =>
+        set((state) => {
+          state.outMarker = frame;
+        }),
     })),
     {
       name: "kbeats-studio-project",
@@ -399,6 +432,8 @@ export const useStudioStore = create<StudioStore>()(
         backgroundColor: state.backgroundColor,
         backgroundOpacity: state.backgroundOpacity,
         lastSaved: state.lastSaved,
+        inMarker: state.inMarker,
+        outMarker: state.outMarker,
       }),
     }
   )

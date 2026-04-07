@@ -12,11 +12,22 @@ import { InstagramLike } from "../overlays/InstagramLike";
 import { InstagramShare } from "../overlays/InstagramShare";
 import { TextOverlay } from "../overlays/TextOverlay";
 import { ImageOverlay } from "../overlays/ImageOverlay";
+import { MotionBackground } from "../overlays/MotionBackground";
 
-function OverlayRenderer({ overlay, audioSrc }: { overlay: OverlayConfig; audioSrc: string | null }) {
+function OverlayRenderer({
+  overlay,
+  audioSrc,
+  allOverlays,
+}: {
+  overlay: OverlayConfig;
+  audioSrc: string | null;
+  allOverlays: OverlayConfig[];
+}) {
   if (!overlay.visible) return null;
 
   switch (overlay.type) {
+    case "motion-background":
+      return <MotionBackground overlay={overlay} allOverlays={allOverlays} />;
     case "waveform":
       if (!audioSrc) return null;
       return <WaveformVisualizer overlay={overlay} audioSrc={audioSrc} />;
@@ -78,7 +89,7 @@ export function KBeatsComposition({
           durationInFrames={overlay.durationInFrames}
           layout="none"
         >
-          <OverlayRenderer overlay={overlay} audioSrc={audioSrc} />
+          <OverlayRenderer overlay={overlay} audioSrc={audioSrc} allOverlays={overlays} />
         </Sequence>
       ))}
     </AbsoluteFill>

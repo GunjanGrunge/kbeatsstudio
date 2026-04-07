@@ -1,7 +1,33 @@
 export type SubscribeVariant = "slide-up" | "bounce-in" | "pop" | "typewriter" | "click";
 export type LikeVariant      = "pulse" | "heart-pop" | "bounce" | "click";
-export type LyricsVariant    = "fade-slide" | "color-fill" | "typewriter" | "typewriter-fill" | "word-pop" | "glow-pulse";
+export type LyricsVariant    = "fade-slide" | "color-fill" | "typewriter" | "typewriter-fill" | "word-pop" | "glow-pulse" | "karaoke" | "glitch-scatter" | "fragment-shatter" | "pulse-smoke";
 export type ImageVariant     = "none" | "float" | "pulse" | "spin" | "bounce-in" | "slide-in-left" | "zoom-in";
+
+// Motion Background
+export type MotionBgStyle =
+  | "gradient-shift"    // liquid chromatic: spring-driven colour blobs
+  | "particle-field"    // stellar drift: 3-depth-layer particles with spring pop-in
+  | "aurora"            // plasma aurora: per-point spring oscillator ribbons
+  | "noise-wave"        // chromatic ink drop: spring-expanding ink blobs
+  | "geometric-pulse"   // orbiting shapes with trails, morph, spring entry
+  | "lyrics-float"      // words float with 5 behaviour modes (drift/strafe/warp/burst)
+  | "neon-grid"         // synthwave perspective grid with pulse wave
+  | "cyber-rain"        // matrix-style digital rain with kanji/binary/music glyphs
+  | "frequency-wave";   // simulated audio spectrum analyser with mirrored EQ bars
+
+export interface MotionBgConfig {
+  style: MotionBgStyle;
+  /** Primary palette — up to 4 hex colours */
+  colors: [string, string, string?, string?];
+  /** 0.1–3.0 — how fast the animation moves */
+  speed: number;
+  /** 0–1 — overall brightness/intensity */
+  intensity: number;
+  /** lyrics-float specific: pull from an existing lyrics overlay by id, or "all" */
+  lyricsSourceId?: string | "all";
+  /** lyrics-float specific: extra raw lyric text if user wants to type custom words */
+  customLyricsText?: string;
+}
 
 export interface WordStyle {
   wordIndex: number;    // 0-based index into the word array of line.text
@@ -21,7 +47,8 @@ export type OverlayType =
   | "lyrics-chords"
   | "waveform"
   | "text"
-  | "image";
+  | "image"
+  | "motion-background";
 
 export type Platform = "youtube" | "instagram";
 
@@ -73,6 +100,12 @@ export interface LyricLine {
   durationInFrames?: number;
   animationVariant?: LyricsVariant;
   wordStyles?: WordStyle[];
+  fontSize?: number;        // per-segment override; falls back to overlay.font.size
+  sectionLabel?: string;    // e.g. "Verse 1", "Chorus", "Bridge"
+  color?: string;           // per-segment color override; falls back to overlay.color
+  fontFamily?: string;      // per-segment font family override; falls back to overlay.font.family
+  fontWeight?: number;      // per-segment font weight override; falls back to overlay.font.weight
+  containerWidth?: number;  // canvas px width of the text box; falls back to overlay.containerWidth
 }
 
 export interface ChordToken {
@@ -128,8 +161,12 @@ export interface OverlayConfig {
   accentColor?: string;
   // Component scale (1 = 100%, applies to CTA overlays)
   componentScale?: number;
+  // Default text box width in canvas px for lyrics overlays (all segments inherit unless overridden)
+  containerWidth?: number;
   // Animation style variant — type-specific
   animationVariant?: SubscribeVariant | LikeVariant | LyricsVariant | ImageVariant;
+  // Motion background config (motion-background overlay type)
+  motionBg?: MotionBgConfig;
 }
 
 export interface ProjectState {
@@ -146,6 +183,8 @@ export interface ProjectState {
   lastSaved: string | null; // ISO timestamp
   backgroundColor: string;
   backgroundOpacity: number; // 0-1
+  inMarker: number | null;   // frame number for export in point
+  outMarker: number | null;  // frame number for export out point
 }
 
 export interface ProjectIndex {

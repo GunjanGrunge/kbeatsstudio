@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
-  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, Waves, Type, Image, LucideProps
+  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, LucideProps
 } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 import type { OverlayConfig, OverlayType } from "@/types/studio";
@@ -20,6 +20,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ComponentType<LucideProps>> = {
   waveform: Waves,
   text: Type,
   image: Image,
+  "motion-background": Sparkles,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
@@ -33,6 +34,7 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   waveform: "#ccff00",
   text: "#F7F6E5",
   image: "#F7F6E5",
+  "motion-background": "#aa44ff",
 };
 
 function OverlayItem({ overlay, isSelected }: { overlay: OverlayConfig; isSelected: boolean }) {
@@ -117,6 +119,7 @@ export function OverlayList() {
   const [showAddMenu, setShowAddMenu] = useState(false);
 
   const OVERLAY_OPTIONS: { type: OverlayType; label: string }[] = [
+    { type: "motion-background", label: "Motion Background" },
     { type: "yt-subscribe", label: "YouTube Subscribe" },
     { type: "yt-like", label: "YouTube Like" },
     { type: "ig-follow", label: "Instagram Follow" },
