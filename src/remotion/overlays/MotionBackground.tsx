@@ -1385,10 +1385,10 @@ function buildFloatWords(
     // Reduced deep-layer font sizes so they read as texture, not competing text
     const fontSize = layer === 0 ? 1 + sr(i * 7) * 1.5 : layer === 1 ? 0.8 + sr(i * 7) * 1.2 : 0.5 + sr(i * 7) * 0.8;
     const peakOpacity = layer === 0
-      ? 0.06 + sr(i * 11) * 0.08   // deep: very subtle
+      ? 0.12 + sr(i * 11) * 0.10   // deep: subtle but readable
       : layer === 1
-      ? 0.15 + sr(i * 11) * 0.15   // mid: moderate
-      : 0.4 + sr(i * 11) * 0.3;   // near: visible
+      ? 0.28 + sr(i * 11) * 0.18   // mid: clearly visible
+      : 0.55 + sr(i * 11) * 0.30;  // near: bold
 
     // speed slider scales lifeFrames inversely and driftSpeed directly
     const baseLife = mode === 3
