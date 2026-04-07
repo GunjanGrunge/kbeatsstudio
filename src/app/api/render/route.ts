@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
       jpegQuality: 95,
       outName: `renders/${projectId}/output-${Date.now()}.mp4`,
       logLevel: "error",
+      timeoutInMilliseconds: 60000, // 60s per delayRender call (e.g. audio decode)
+      maxRetries: 2,
       ...(frameRange ? { frameRange } : {}),
     });
 

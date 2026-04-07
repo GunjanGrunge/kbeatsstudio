@@ -300,8 +300,12 @@ function nearestPow2(n: number): number {
   return Math.pow(2, Math.round(Math.log2(Math.max(16, n))));
 }
 
-/** Route private S3 URLs through the media proxy to avoid 403 errors */
+/** Route private S3 URLs through the media proxy to avoid 403 errors.
+ *  During Lambda rendering the environment variable REMOTION_LAMBDA is set,
+ *  so we skip the proxy and use the URL as-is (already presigned by the render API). */
 function toProxiedUrl(src: string): string {
+  // In Lambda, REMOTION_LAMBDA env var is set — bypass the Next.js proxy
+  if (typeof process !== "undefined" && process.env.REMOTION_LAMBDA) return src;
   const match = src.match(/\.amazonaws\.com\/(.+)/);
   if (match) return `/api/s3/media?key=${encodeURIComponent(match[1])}`;
   return src;
