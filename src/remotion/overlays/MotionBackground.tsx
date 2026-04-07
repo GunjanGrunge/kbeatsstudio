@@ -1353,41 +1353,65 @@ interface FloatWord {
 function buildFloatWords(
   sourceWords: string[],
   totalFrames: number,
-  fps: number
+  fps: number,
+  speed: number,
+  intensity: number,
 ): FloatWord[] {
   if (sourceWords.length === 0) return [];
 
-  const targetCount = Math.max(50, Math.ceil((totalFrames / fps) * 2.5));
+  // Fewer simultaneous words to reduce center clutter
+  const targetCount = Math.max(30, Math.ceil((totalFrames / fps) * 1.5));
   const repeated: string[] = [];
   while (repeated.length < targetCount) repeated.push(...sourceWords);
   const words = repeated.slice(0, targetCount);
+
+  // Spawn helper that avoids the center dead-zone (35–65% × 35–65%)
+  function spawnX(seed: number): number {
+    const raw = 5 + sr(seed) * 90;
+    // If in center band, push to either left or right third
+    if (raw > 35 && raw < 65) return sr(seed + 0.5) < 0.5 ? 5 + sr(seed) * 28 : 67 + sr(seed) * 28;
+    return raw;
+  }
+  function spawnY(seed: number): number {
+    const raw = 5 + sr(seed) * 90;
+    if (raw > 35 && raw < 65) return sr(seed + 0.5) < 0.5 ? 5 + sr(seed) * 28 : 67 + sr(seed) * 28;
+    return raw;
+  }
 
   return words.map((word, i) => {
     const mode = Math.floor(sr(i * 3) * 5) as BehaviourMode;
     const layer = Math.floor(sr(i * 5) * 3); // 0=deep, 1=mid, 2=near
 
-    // Layer-dependent properties
-    const fontSize = layer === 0 ? 2 + sr(i * 7) * 3 : layer === 1 ? 1 + sr(i * 7) * 1.5 : 0.5 + sr(i * 7) * 0.8;
+    // Reduced deep-layer font sizes so they read as texture, not competing text
+    const fontSize = layer === 0 ? 1 + sr(i * 7) * 1.5 : layer === 1 ? 0.8 + sr(i * 7) * 1.2 : 0.5 + sr(i * 7) * 0.8;
     const peakOpacity = layer === 0
-      ? 0.08 + sr(i * 11) * 0.12   // deep: very subtle
+      ? 0.06 + sr(i * 11) * 0.08   // deep: very subtle
       : layer === 1
-      ? 0.2 + sr(i * 11) * 0.2    // mid: moderate
-      : 0.5 + sr(i * 11) * 0.35;  // near: visible
+      ? 0.15 + sr(i * 11) * 0.15   // mid: moderate
+      : 0.4 + sr(i * 11) * 0.3;   // near: visible
 
-    const lifeFrames = mode === 3
+    // speed slider scales lifeFrames inversely and driftSpeed directly
+    const baseLife = mode === 3
       ? Math.round(fps * (0.8 + sr(i * 13) * 0.8)) // WARP: short
       : mode === 4
       ? Math.round(fps * (0.5 + sr(i * 13) * 0.6)) // BURST: very short
       : Math.round(fps * (2 + sr(i * 13) * 5));    // others: long
+    const lifeFrames = Math.max(10, Math.round(baseLife / Math.max(0.1, speed)));
+
+    const baseDrift = mode === 2 ? 40 + sr(i * 37) * 40 : 15 + sr(i * 37) * 25;
+
+    // WARP_ZOOM: scatter around center instead of hardcoding 50,50
+    const warpX = 38 + sr(i * 71) * 24; // 38–62%
+    const warpY = 38 + sr(i * 73) * 24; // 38–62%
 
     return {
       word,
       mode,
-      x: 5 + sr(i * 17) * 90,
-      y: 5 + sr(i * 17 + 1) * 90,
+      x: mode === 3 ? warpX : spawnX(i * 17),
+      y: mode === 3 ? warpY : spawnY(i * 17 + 1),
       startFrame: Math.floor(sr(i * 19) * totalFrames),
       lifeFrames,
-      peakOpacity,
+      peakOpacity: peakOpacity * intensity,
       fontSize,
       colorIdx: Math.floor(sr(i * 23) * 4),
       phase: sr(i * 29) * Math.PI * 2,
@@ -1398,7 +1422,7 @@ function buildFloatWords(
         : (sr(i * 31) - 0.5) < 0                    // STRAFE: L or R
         ? Math.PI + (sr(i * 31 + 1) - 0.5) * 0.4
         : (sr(i * 31 + 1) - 0.5) * 0.4,
-      driftSpeed: mode === 2 ? 40 + sr(i * 37) * 40 : 15 + sr(i * 37) * 25,
+      driftSpeed: baseDrift * speed,
       burstDist: 20 + sr(i * 41) * 40,
       glowRadius: layer === 2 ? 2 + sr(i * 43) * 4 : 0,
       wobbleAmp: (sr(i * 47) - 0.5) * 3,
@@ -1447,7 +1471,7 @@ function LyricsFloat({
     words.push("music", "beats", "vibe", "flow", "sound", "pulse", "wave", "drop", "bass", "rhythm", "groove", "fire", "soul");
   }
 
-  const floatWords = buildFloatWords(words, totalFrames, fps);
+  const floatWords = buildFloatWords(words, totalFrames, fps, cfg.speed, cfg.intensity);
   const colors = [
     cfg.colors[0],
     cfg.colors[1],
@@ -1480,7 +1504,7 @@ function LyricsFloat({
           fw.mode === 3 || fw.mode === 4
             ? interpolate(progress, [0.4, 1], [1, 0], { extrapolateLeft: "clamp" })
             : interpolate(progress, [0.7, 1], [1, 0], { extrapolateLeft: "clamp" });
-        const opacity = entrySpring * fadeOut * fw.peakOpacity * cfg.intensity;
+        const opacity = entrySpring * fadeOut * fw.peakOpacity;
         if (opacity < 0.004) return null;
 
         // ── Position & transform per mode ────────────────────────────────────
@@ -1515,8 +1539,8 @@ function LyricsFloat({
             config: { damping: 12, stiffness: 60, mass: 1.5 },
             durationInFrames: fw.lifeFrames,
           });
-          x = 50; // always from centre
-          y = 50;
+          x = fw.x; // scattered around center (set in buildFloatWords)
+          y = fw.y;
           scale = zoomSpring * 8 + 0.05; // 0.05 → 8+
           blurPx = interpolate(zoomSpring, [0, 0.3, 1], [8, 2, 0]);
 
