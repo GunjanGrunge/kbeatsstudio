@@ -2,6 +2,7 @@ export type SubscribeVariant = "slide-up" | "bounce-in" | "pop" | "typewriter" |
 export type LikeVariant      = "pulse" | "heart-pop" | "bounce" | "click";
 export type LyricsVariant    = "fade-slide" | "color-fill" | "typewriter" | "typewriter-fill" | "word-pop" | "glow-pulse" | "karaoke" | "glitch-scatter" | "fragment-shatter" | "pulse-smoke";
 export type ImageVariant     = "none" | "float" | "pulse" | "spin" | "bounce-in" | "slide-in-left" | "zoom-in";
+export type TextVariant      = "fade" | "slide-up" | "slide-down" | "slide-left" | "slide-right" | "zoom-in" | "zoom-bounce" | "typewriter" | "word-pop" | "glitch" | "rotate-in" | "blur-in";
 
 // Motion Background
 export type MotionBgStyle =
@@ -48,6 +49,7 @@ export type OverlayType =
   | "waveform"
   | "text"
   | "image"
+  | "video-clip"
   | "motion-background";
 
 export type Platform = "youtube" | "instagram";
@@ -143,6 +145,10 @@ export interface OverlayConfig {
   // For image overlay
   imageSrc?: string;
   imageFit?: "none" | "contain" | "cover" | "fill";
+  // For video-clip overlay
+  videoClipSrc?: string;
+  videoClipFit?: "none" | "contain" | "cover" | "fill";
+  videoClipVolume?: number; // 0–1, default 0 (muted)
   // For waveform
   waveformColor?: string;
   waveformBars?: number;
@@ -164,7 +170,7 @@ export interface OverlayConfig {
   // Default text box width in canvas px for lyrics overlays (all segments inherit unless overridden)
   containerWidth?: number;
   // Animation style variant — type-specific
-  animationVariant?: SubscribeVariant | LikeVariant | LyricsVariant | ImageVariant;
+  animationVariant?: SubscribeVariant | LikeVariant | LyricsVariant | ImageVariant | TextVariant;
   // Motion background config (motion-background overlay type)
   motionBg?: MotionBgConfig;
 }

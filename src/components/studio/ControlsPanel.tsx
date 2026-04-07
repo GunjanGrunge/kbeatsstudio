@@ -12,7 +12,8 @@ import { LyricsEditor } from "@/components/controls/LyricsEditor";
 import { WaveformControl } from "@/components/controls/WaveformControl";
 import { CTAControls } from "@/components/controls/CTAControls";
 import { ImageControls } from "@/components/controls/ImageControls";
-import { AnimationVariantControl, LYRICS_VARIANTS, IMAGE_VARIANTS } from "@/components/controls/AnimationVariantControl";
+import { VideoClipControls } from "@/components/controls/VideoClipControls";
+import { AnimationVariantControl, LYRICS_VARIANTS, IMAGE_VARIANTS, TEXT_VARIANTS } from "@/components/controls/AnimationVariantControl";
 import { TextStyleEditor } from "@/components/controls/TextStyleEditor";
 import { MotionBackgroundControl } from "@/components/controls/MotionBackgroundControl";
 import { Slider } from "@/components/ui/slider";
@@ -86,14 +87,17 @@ export function ControlsPanel() {
 
   const showMotionBgControls = overlay?.type === "motion-background";
   const showTextControls = overlay && !showMotionBgControls && ["lyrics", "lyrics-chords", "text"].includes(overlay.type);
-  const showTextStyleEditor = overlay?.type === "text";
-  const showColorControls = overlay && !showMotionBgControls && overlay.type !== "waveform" && overlay.type !== "text";
+  const showTextStyleEditor = overlay && ["text", "lyrics", "lyrics-chords"].includes(overlay.type);
+  const showColorControls = overlay && !showMotionBgControls && overlay.type !== "waveform" && !["text", "lyrics", "lyrics-chords"].includes(overlay.type);
   const showLyricsEditor = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
   const showLyricsAnimation = overlay && ["lyrics", "lyrics-chords"].includes(overlay.type);
   const showWaveformControls = overlay?.type === "waveform";
   const showCTAControls = overlay && ["yt-subscribe", "yt-like", "ig-follow", "ig-like", "ig-report", "ig-share", "text"].includes(overlay.type);
   const showImageControls = overlay?.type === "image";
   const showImageAnimation = overlay?.type === "image";
+  const showVideoClipControls = overlay?.type === "video-clip";
+  const showVideoClipAnimation = overlay?.type === "video-clip";
+  const showTextAnimation = overlay?.type === "text";
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#0d0d0d", minHeight: 0 }}>
@@ -173,10 +177,41 @@ export function ControlsPanel() {
                 </div>
               )}
 
+              {/* Video clip controls */}
+              {showVideoClipControls && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <VideoClipControls overlayId={overlay.id} />
+                </div>
+              )}
+
+              {/* Video clip animation style */}
+              {showVideoClipAnimation && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <AnimationVariantControl
+                    overlayId={overlay.id}
+                    variants={IMAGE_VARIANTS}
+                    defaultVariant="none"
+                    sectionLabel="Animation Style"
+                  />
+                </div>
+              )}
+
               {/* CTA-specific inputs (channel name, username, text content) */}
               {showCTAControls && (
                 <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
                   <CTAControls overlayId={overlay.id} />
+                </div>
+              )}
+
+              {/* Text animation style */}
+              {showTextAnimation && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <AnimationVariantControl
+                    overlayId={overlay.id}
+                    variants={TEXT_VARIANTS}
+                    defaultVariant="fade"
+                    sectionLabel="Animation Style"
+                  />
                 </div>
               )}
 

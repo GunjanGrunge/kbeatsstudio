@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Loader2, Download, ArrowLeft, Pencil, ChevronDown, Save } from "lucide-react";
+import { Check, Loader2, Download, ArrowLeft, Pencil, ChevronDown, Save, Undo2, Redo2 } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 import { saveProject } from "@/hooks/useAutoSave";
 import { useRouter } from "next/navigation";
@@ -20,10 +20,34 @@ export function ProjectHeader({ onExport }: Props) {
   const template = useStudioStore((s) => s.template);
   const setProjectName = useStudioStore((s) => s.setProjectName);
   const loadProject = useStudioStore((s) => s.loadProject);
+  const undo = useStudioStore((s) => s.undo);
+  const redo = useStudioStore((s) => s.redo);
+  const canUndo = useStudioStore((s) => s.canUndo);
+  const canRedo = useStudioStore((s) => s.canRedo);
+  // canUndo/canRedo are reactive booleans — no need to call as functions
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(projectName);
   const [saving, setSaving] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
+  // Global undo/redo keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      const isTyping = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+      if (isTyping) return;
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") {
+        e.preventDefault();
+        if (canUndo) undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && ((e.shiftKey && e.key === "z") || e.key === "y")) {
+        e.preventDefault();
+        if (canRedo) redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo, canUndo, canRedo]);
 
   const handleNameSubmit = () => {
     if (editValue.trim()) setProjectName(editValue.trim());
@@ -139,6 +163,36 @@ export function ProjectHeader({ onExport }: Props) {
             )}
           </AnimatePresence>
         </div>
+      </div>
+
+      {/* Center: Undo / Redo */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => { if (canUndo) undo(); }}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+          className="p-1.5 rounded transition-colors duration-150"
+          style={{
+            color: canUndo ? "#F7F6E5" : "#333",
+            background: "transparent",
+            cursor: canUndo ? "pointer" : "default",
+          }}
+        >
+          <Undo2 size={14} />
+        </button>
+        <button
+          onClick={() => { if (canRedo) redo(); }}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Shift+Z)"
+          className="p-1.5 rounded transition-colors duration-150"
+          style={{
+            color: canRedo ? "#F7F6E5" : "#333",
+            background: "transparent",
+            cursor: canRedo ? "pointer" : "default",
+          }}
+        >
+          <Redo2 size={14} />
+        </button>
       </div>
 
       {/* Right: Save + Export */}

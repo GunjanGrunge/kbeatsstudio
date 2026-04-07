@@ -7,6 +7,23 @@ import { v4 as uuidv4 } from "uuid";
 import type { OverlayConfig, OverlayType, LyricLine, ProjectState, Template } from "@/types/studio";
 import { TEMPLATES } from "@/types/studio";
 
+// ── Undo/Redo ──────────────────────────────────────────────────────────────
+// Stored outside the persisted store so they survive HMR but aren't saved to
+// localStorage. We snapshot only the overlay-related fields that users edit.
+type HistorySnapshot = Pick<ProjectState, "overlays" | "backgroundColor" | "backgroundOpacity" | "durationInFrames">;
+const undoStack: HistorySnapshot[] = [];
+const redoStack: HistorySnapshot[] = [];
+const MAX_HISTORY = 50;
+
+function takeSnapshot(state: ProjectState): HistorySnapshot {
+  return JSON.parse(JSON.stringify({
+    overlays: state.overlays,
+    backgroundColor: state.backgroundColor,
+    backgroundOpacity: state.backgroundOpacity,
+    durationInFrames: state.durationInFrames,
+  }));
+}
+
 interface StudioActions {
   // Project
   initProject: (projectId: string, template: Template) => void;
@@ -19,6 +36,13 @@ interface StudioActions {
   setBackgroundOpacity: (opacity: number) => void;
   setVideoFit: (fit: "cover" | "contain" | "fill") => void;
   markSaved: () => void;
+
+  // Undo / Redo
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  pushHistory: () => void;
 
   // Playhead (UI-only, not persisted)
   currentFrame: number;
@@ -220,6 +244,7 @@ const OVERLAY_LABELS: Record<OverlayType, string> = {
   waveform: "Waveform",
   text: "Text",
   image: "Image",
+  "video-clip": "Video Clip",
   "motion-background": "Motion Background",
 };
 
@@ -306,54 +331,107 @@ export const useStudioStore = create<StudioStore>()(
           state.lastSaved = new Date().toISOString();
         }),
 
-      addOverlay: (type) =>
+      // ── Undo / Redo ──────────────────────────────────────────────────────
+      canUndo: false,
+      canRedo: false,
+
+      pushHistory: () => {
+        const snap = takeSnapshot(get());
+        undoStack.push(snap);
+        if (undoStack.length > MAX_HISTORY) undoStack.shift();
+        redoStack.length = 0; // clear redo on new action
+        set((state) => {
+          (state as unknown as { canUndo: boolean; canRedo: boolean }).canUndo = undoStack.length > 0;
+          (state as unknown as { canUndo: boolean; canRedo: boolean }).canRedo = redoStack.length > 0;
+        });
+      },
+
+      undo: () =>
+        set((state) => {
+          if (undoStack.length === 0) return;
+          redoStack.push(takeSnapshot(state as unknown as ProjectState));
+          const prev = undoStack.pop()!;
+          state.overlays = prev.overlays;
+          state.backgroundColor = prev.backgroundColor;
+          state.backgroundOpacity = prev.backgroundOpacity;
+          state.durationInFrames = prev.durationInFrames;
+          state.isDirty = true;
+          (state as unknown as { canUndo: boolean; canRedo: boolean }).canUndo = undoStack.length > 0;
+          (state as unknown as { canUndo: boolean; canRedo: boolean }).canRedo = redoStack.length > 0;
+        }),
+
+      redo: () =>
+        set((state) => {
+          if (redoStack.length === 0) return;
+          undoStack.push(takeSnapshot(state as unknown as ProjectState));
+          const next = redoStack.pop()!;
+          state.overlays = next.overlays;
+          state.backgroundColor = next.backgroundColor;
+          state.backgroundOpacity = next.backgroundOpacity;
+          state.durationInFrames = next.durationInFrames;
+          state.isDirty = true;
+          (state as unknown as { canUndo: boolean; canRedo: boolean }).canUndo = undoStack.length > 0;
+          (state as unknown as { canUndo: boolean; canRedo: boolean }).canRedo = redoStack.length > 0;
+        }),
+
+      addOverlay: (type) => {
+        get().pushHistory();
         set((state) => {
           const overlay = createDefaultOverlay(type, state.template.fps, (state as unknown as { currentFrame: number }).currentFrame);
           state.overlays.push(overlay);
           state.selectedOverlayId = overlay.id;
           state.isDirty = true;
-        }),
+        });
+      },
 
-      updateOverlay: (id, patch) =>
+      updateOverlay: (id, patch) => {
         set((state) => {
           const idx = state.overlays.findIndex((o) => o.id === id);
           if (idx !== -1) {
             Object.assign(state.overlays[idx], patch);
             state.isDirty = true;
           }
-        }),
+        });
+      },
 
-      removeOverlay: (id) =>
+      removeOverlay: (id) => {
+        get().pushHistory();
         set((state) => {
           state.overlays = state.overlays.filter((o) => o.id !== id);
           if (state.selectedOverlayId === id) {
             state.selectedOverlayId = null;
           }
           state.isDirty = true;
-        }),
+        });
+      },
 
-      reorderOverlays: (fromIndex, toIndex) =>
+      reorderOverlays: (fromIndex, toIndex) => {
+        get().pushHistory();
         set((state) => {
           const [moved] = state.overlays.splice(fromIndex, 1);
           state.overlays.splice(toIndex, 0, moved);
           state.isDirty = true;
-        }),
+        });
+      },
 
-      setOverlays: (overlays) =>
+      setOverlays: (overlays) => {
         set((state) => {
           state.overlays = overlays;
           state.isDirty = true;
-        }),
+        });
+      },
 
-      addLyricLine: (overlayId, line) =>
+      addLyricLine: (overlayId, line) => {
+        get().pushHistory();
         set((state) => {
           const overlay = state.overlays.find((o) => o.id === overlayId);
           if (!overlay || !overlay.lyrics) return;
           overlay.lyrics.push(line);
           state.isDirty = true;
-        }),
+        });
+      },
 
-      updateLyricLine: (overlayId, lineIndex, patch) =>
+      updateLyricLine: (overlayId, lineIndex, patch) => {
         set((state) => {
           const overlay = state.overlays.find((o) => o.id === overlayId);
           if (!overlay || !overlay.lyrics || !overlay.lyrics[lineIndex]) return;
@@ -365,24 +443,28 @@ export const useStudioStore = create<StudioStore>()(
             overlay.durationInFrames = segEnd;
           }
           state.isDirty = true;
-        }),
+        });
+      },
 
-      removeLyricLine: (overlayId, lineIndex) =>
+      removeLyricLine: (overlayId, lineIndex) => {
+        get().pushHistory();
         set((state) => {
           const overlay = state.overlays.find((o) => o.id === overlayId);
           if (!overlay || !overlay.lyrics) return;
           overlay.lyrics.splice(lineIndex, 1);
           state.isDirty = true;
-        }),
+        });
+      },
 
-      toggleOverlayVisibility: (id) =>
+      toggleOverlayVisibility: (id) => {
         set((state) => {
           const overlay = state.overlays.find((o) => o.id === id);
           if (overlay) {
             overlay.visible = !overlay.visible;
             state.isDirty = true;
           }
-        }),
+        });
+      },
 
       selectOverlay: (id) =>
         set((state) => {
@@ -391,7 +473,8 @@ export const useStudioStore = create<StudioStore>()(
           (state as unknown as { selectedLyricLineIndex: number | null }).selectedLyricLineIndex = null;
         }),
 
-      duplicateOverlay: (id) =>
+      duplicateOverlay: (id) => {
+        get().pushHistory();
         set((state) => {
           const original = state.overlays.find((o) => o.id === id);
           if (!original) return;
@@ -404,7 +487,8 @@ export const useStudioStore = create<StudioStore>()(
           state.overlays.splice(idx + 1, 0, clone);
           state.selectedOverlayId = clone.id;
           state.isDirty = true;
-        }),
+        });
+      },
 
       setInMarker: (frame) =>
         set((state) => {

@@ -40,6 +40,21 @@ export const IMAGE_VARIANTS: VariantOption[] = [
   { value: "zoom-in",       label: "Zoom In",      description: "Scale up entrance" },
 ];
 
+export const TEXT_VARIANTS: VariantOption[] = [
+  { value: "fade",        label: "Fade",         description: "Simple opacity fade in/out" },
+  { value: "slide-up",    label: "Slide Up",      description: "Rises from below" },
+  { value: "slide-down",  label: "Slide Down",    description: "Drops from above" },
+  { value: "slide-left",  label: "Slide Left",    description: "Enters from the right" },
+  { value: "slide-right", label: "Slide Right",   description: "Enters from the left" },
+  { value: "zoom-in",     label: "Zoom In",       description: "Scales up from centre" },
+  { value: "zoom-bounce", label: "Zoom Bounce",   description: "Overshoot spring zoom" },
+  { value: "typewriter",  label: "Typewriter",    description: "Characters appear one by one" },
+  { value: "word-pop",    label: "Word Pop",      description: "Each word springs in" },
+  { value: "glitch",      label: "Glitch",        description: "RGB split flicker entrance" },
+  { value: "rotate-in",   label: "Rotate In",     description: "Spins and fades in" },
+  { value: "blur-in",     label: "Blur In",       description: "Sharpens from blur" },
+];
+
 export const LYRICS_VARIANTS: VariantOption[] = [
   { value: "fade-slide",     label: "Fade Slide",     description: "Fade in + slide up" },
   { value: "color-fill",     label: "Color Fill",     description: "Karaoke sweep left→right" },

@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useStudioStore } from "@/store/studioStore";
 import { sharedFrameRef } from "@/lib/sharedRefs";
-import { Music2, Crosshair, Trash2, Copy, Clipboard, ChevronDown } from "lucide-react";
+import { Music2, Crosshair, Trash2, Copy, Clipboard, ChevronDown, Search } from "lucide-react";
 import { parseTimecodeToFrames } from "@/lib/parseTimecode";
+import { useGoogleFonts } from "@/hooks/useGoogleFonts";
+import { getFontWeights } from "@/lib/googleFonts";
 import type { LyricLine, LyricsVariant } from "@/types/studio";
 
 interface Props {
@@ -24,7 +26,6 @@ const ANIMATION_VARIANTS: { value: LyricsVariant; label: string }[] = [
   { value: "pulse-smoke",       label: "Pulse Smoke" },
 ];
 
-const FONT_FAMILIES = ["Outfit", "Inter", "Roboto", "Playfair Display", "Oswald", "Bebas Neue", "Montserrat", "Raleway", "Lato", "Poppins"];
 const FONT_WEIGHTS  = [400, 500, 600, 700, 800, 900];
 
 function framesToTimestamp(frames: number, fps: number): string {
@@ -57,6 +58,9 @@ export function LyricsEditor({ overlayId }: Props) {
   const updateOverlay = useStudioStore((s) => s.updateOverlay);
   const selectedLyricLineIndex = useStudioStore((s) => s.selectedLyricLineIndex);
   const setSelectedLyricLineIndex = useStudioStore((s) => s.setSelectedLyricLineIndex);
+
+  const { fonts, search: fontSearch, setSearch: setFontSearch, loadFont } = useGoogleFonts();
+  const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -223,6 +227,10 @@ export function LyricsEditor({ overlayId }: Props) {
   const effectiveFontWeight = selectedLine?.fontWeight ?? overlay.font?.weight ?? 700;
   const effectiveFontSize = selectedLine?.fontSize ?? overlay.font?.size ?? 48;
   const effectiveContainerWidth = overlay.containerWidth;
+
+  // Available weights for the currently-selected font family
+  const selectedFontDef = fonts.find((f) => f.family === effectiveFontFamily);
+  const availableWeights = selectedFontDef ? getFontWeights(selectedFontDef) : FONT_WEIGHTS;
 
   return (
     <div className="space-y-3">
@@ -646,28 +654,73 @@ export function LyricsEditor({ overlayId }: Props) {
                 <button
                   className="text-[8px] text-[#555] hover:text-[#888]"
                   style={{ fontFamily: "Outfit, sans-serif" }}
-                  onClick={() => { const next = lines.map((l, i) => { if (i !== sel) return l; const { fontFamily: _f, ...rest } = l; return rest; }); setLines(next); flushToStore(next); }}
+                  onClick={() => { const next = lines.map((l, i) => { if (i !== sel) return l; const { fontFamily: _f, ...rest } = l; return rest; }); setLines(next); flushToStore(next); setFontDropdownOpen(false); }}
                 >
                   reset
                 </button>
               )}
             </div>
             <div className="relative">
-              <select
-                value={effectiveFontFamily}
-                onChange={(e) => { const next = lines.map((l, i) => i === sel ? { ...l, fontFamily: e.target.value } : l); setLines(next); flushToStore(next); }}
-                className="w-full h-7 rounded px-2 pr-6 text-[11px] text-white outline-none appearance-none"
+              <button
+                className="w-full h-7 rounded px-2 pr-6 text-[11px] text-white text-left outline-none flex items-center"
                 style={{
-                  fontFamily: "Outfit, sans-serif",
+                  fontFamily: `${effectiveFontFamily}, sans-serif`,
                   background: selectedLine.fontFamily !== undefined ? "rgba(204,255,0,0.06)" : "rgba(255,255,255,0.05)",
                   border: `1px solid ${selectedLine.fontFamily !== undefined ? "rgba(204,255,0,0.3)" : "#333"}`,
                 }}
+                onClick={() => { setFontSearch(""); setFontDropdownOpen((v) => !v); }}
               >
-                {FONT_FAMILIES.map((f) => (
-                  <option key={f} value={f} style={{ background: "#1a1a1a" }}>{f}</option>
-                ))}
-              </select>
-              <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#555]" />
+                <span className="flex-1 truncate">{effectiveFontFamily}</span>
+                <ChevronDown size={10} className="shrink-0 text-[#555]" />
+              </button>
+              {fontDropdownOpen && (
+                <div
+                  className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border overflow-hidden"
+                  style={{ background: "#161616", borderColor: "#333", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}
+                >
+                  {/* Search */}
+                  <div className="flex items-center gap-1.5 px-2 py-1.5 border-b" style={{ borderColor: "#222" }}>
+                    <Search size={10} className="text-[#555] shrink-0" />
+                    <input
+                      autoFocus
+                      value={fontSearch}
+                      onChange={(e) => setFontSearch(e.target.value)}
+                      placeholder="Search fonts…"
+                      className="flex-1 bg-transparent text-[11px] text-white outline-none"
+                      style={{ fontFamily: "Outfit, sans-serif" }}
+                    />
+                  </div>
+                  {/* Font list */}
+                  <div className="overflow-y-auto" style={{ maxHeight: 180 }}>
+                    {fonts.slice(0, 80).map((f) => (
+                      <button
+                        key={f.family}
+                        className="w-full text-left px-2 py-1 text-[11px] transition-colors"
+                        style={{
+                          fontFamily: `${f.family}, sans-serif`,
+                          color: f.family === effectiveFontFamily ? "#ccff00" : "#ccc",
+                          background: f.family === effectiveFontFamily ? "rgba(204,255,0,0.06)" : "transparent",
+                        }}
+                        onMouseEnter={(e) => { if (f.family !== effectiveFontFamily) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; }}
+                        onMouseLeave={(e) => { if (f.family !== effectiveFontFamily) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                        onClick={() => {
+                          loadFont(f.family, [400, 700]);
+                          const next = lines.map((l, i) => i === sel ? { ...l, fontFamily: f.family } : l);
+                          setLines(next);
+                          flushToStore(next);
+                          setFontDropdownOpen(false);
+                          setFontSearch("");
+                        }}
+                      >
+                        {f.family}
+                      </button>
+                    ))}
+                    {fonts.length === 0 && (
+                      <p className="px-2 py-2 text-[10px] text-[#444]" style={{ fontFamily: "Outfit, sans-serif" }}>No fonts found</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -700,7 +753,7 @@ export function LyricsEditor({ overlayId }: Props) {
                     border: `1px solid ${selectedLine.fontWeight !== undefined ? "rgba(204,255,0,0.3)" : "#333"}`,
                   }}
                 >
-                  {FONT_WEIGHTS.map((w) => (
+                  {availableWeights.map((w) => (
                     <option key={w} value={w} style={{ background: "#1a1a1a" }}>{w}</option>
                   ))}
                 </select>

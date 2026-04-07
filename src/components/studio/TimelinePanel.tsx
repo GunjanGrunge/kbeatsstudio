@@ -6,7 +6,7 @@ import { useStudioStore } from "@/store/studioStore";
 import { sharedFrameRef } from "@/lib/sharedRefs";
 import type { OverlayConfig, OverlayType, LyricLine } from "@/types/studio";
 import {
-  Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, LucideProps,
+  Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, Film, LucideProps,
   Play, Pause, SkipBack, ZoomIn, ZoomOut, Plus,
 } from "lucide-react";
 
@@ -29,6 +29,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ComponentType<LucideProps>> = {
   waveform: Waves,
   text: Type,
   image: Image,
+  "video-clip": Film,
   "motion-background": Sparkles,
 };
 
@@ -43,6 +44,7 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   waveform: "#ccff00",
   text: "#F7F6E5",
   image: "#ff9900",
+  "video-clip": "#66aaff",
   "motion-background": "#aa44ff",
 };
 

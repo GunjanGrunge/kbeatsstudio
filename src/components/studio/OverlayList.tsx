@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
-  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, LucideProps
+  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, Film, LucideProps
 } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 import type { OverlayConfig, OverlayType } from "@/types/studio";
@@ -20,6 +20,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ComponentType<LucideProps>> = {
   waveform: Waves,
   text: Type,
   image: Image,
+  "video-clip": Film,
   "motion-background": Sparkles,
 };
 
@@ -34,6 +35,7 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   waveform: "#ccff00",
   text: "#F7F6E5",
   image: "#F7F6E5",
+  "video-clip": "#66aaff",
   "motion-background": "#aa44ff",
 };
 
@@ -130,6 +132,7 @@ export function OverlayList() {
     { type: "waveform", label: "Waveform" },
     { type: "text", label: "Text" },
     { type: "image", label: "Image / Logo" },
+    { type: "video-clip", label: "Video Clip" },
   ];
 
   // The list is displayed in reverse (top layer first), so when Framer
@@ -160,8 +163,8 @@ export function OverlayList() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.96 }}
                 transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-hidden border"
-                style={{ background: "#1a1a1c", borderColor: "#333333", minWidth: 180 }}
+                className="overlay-add-menu absolute right-0 top-full mt-1 z-50 rounded-xl overflow-y-scroll border"
+                style={{ background: "#1a1a1c", borderColor: "#333333", minWidth: 180, maxHeight: "320px", scrollbarWidth: "thin", scrollbarColor: "#ccff00 #111111" }}
               >
                 {OVERLAY_OPTIONS.map((opt) => {
                   const Icon = OVERLAY_ICONS[opt.type];

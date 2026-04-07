@@ -12,6 +12,7 @@ import { InstagramLike } from "../overlays/InstagramLike";
 import { InstagramShare } from "../overlays/InstagramShare";
 import { TextOverlay } from "../overlays/TextOverlay";
 import { ImageOverlay } from "../overlays/ImageOverlay";
+import { VideoClipOverlay } from "../overlays/VideoClipOverlay";
 import { MotionBackground } from "../overlays/MotionBackground";
 
 function OverlayRenderer({
@@ -49,6 +50,8 @@ function OverlayRenderer({
       return <TextOverlay overlay={overlay} />;
     case "image":
       return <ImageOverlay overlay={overlay} />;
+    case "video-clip":
+      return <VideoClipOverlay overlay={overlay} />;
     default:
       return null;
   }
