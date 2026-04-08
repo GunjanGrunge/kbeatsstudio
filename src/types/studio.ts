@@ -1,6 +1,6 @@
 export type SubscribeVariant = "slide-up" | "bounce-in" | "pop" | "typewriter" | "click";
 export type LikeVariant      = "pulse" | "heart-pop" | "bounce" | "click";
-export type LyricsVariant    = "fade-slide" | "color-fill" | "typewriter" | "typewriter-fill" | "word-pop" | "glow-pulse" | "karaoke" | "glitch-scatter" | "fragment-shatter" | "pulse-smoke";
+export type LyricsVariant    = "fade-slide" | "color-fill" | "typewriter" | "typewriter-fill" | "word-pop" | "glow-pulse" | "karaoke" | "glitch-scatter" | "fragment-shatter" | "pulse-smoke" | "dust-dissolve" | "hologram-scan" | "magnetic-distort" | "shockwave-burst" | "mirror-echo" | "ink-bleed" | "liquid-drip" | "light-stroke" | "cinematic-blur" | "bounce-letter";
 export type ImageVariant     = "none" | "float" | "pulse" | "spin" | "bounce-in" | "slide-in-left" | "zoom-in";
 export type TextVariant      = "fade" | "slide-up" | "slide-down" | "slide-left" | "slide-right" | "zoom-in" | "zoom-bounce" | "typewriter" | "word-pop" | "glitch" | "rotate-in" | "blur-in";
 
@@ -14,7 +14,8 @@ export type MotionBgStyle =
   | "lyrics-float"      // words float with 5 behaviour modes (drift/strafe/warp/burst)
   | "neon-grid"         // synthwave perspective grid with pulse wave
   | "cyber-rain"        // matrix-style digital rain with kanji/binary/music glyphs
-  | "frequency-wave";   // simulated audio spectrum analyser with mirrored EQ bars
+  | "frequency-wave"    // simulated audio spectrum analyser with mirrored EQ bars
+  | "pixabay-video";    // stock video from Pixabay search
 
 export interface MotionBgConfig {
   style: MotionBgStyle;
@@ -28,6 +29,11 @@ export interface MotionBgConfig {
   lyricsSourceId?: string | "all";
   /** lyrics-float specific: extra raw lyric text if user wants to type custom words */
   customLyricsText?: string;
+  /** pixabay-video specific */
+  pixabayVideoUrl?: string;
+  pixabayVideoId?: number;
+  pixabayThumbUrl?: string;
+  videoFit?: "cover" | "contain" | "fill";
 }
 
 export interface WordStyle {

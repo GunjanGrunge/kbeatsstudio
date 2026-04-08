@@ -24,6 +24,16 @@ const ANIMATION_VARIANTS: { value: LyricsVariant; label: string }[] = [
   { value: "glitch-scatter",    label: "Glitch Scatter" },
   { value: "fragment-shatter",  label: "Fragment Shatter" },
   { value: "pulse-smoke",       label: "Pulse Smoke" },
+  { value: "dust-dissolve",     label: "Dust Dissolve" },
+  { value: "hologram-scan",     label: "Hologram Scan" },
+  { value: "magnetic-distort",  label: "Magnetic Distort" },
+  { value: "shockwave-burst",   label: "Shockwave Burst" },
+  { value: "mirror-echo",       label: "Mirror Echo" },
+  { value: "ink-bleed",         label: "Ink Bleed" },
+  { value: "liquid-drip",       label: "Liquid Drip" },
+  { value: "light-stroke",      label: "Light Stroke" },
+  { value: "cinematic-blur",    label: "Cinematic Blur" },
+  { value: "bounce-letter",     label: "Bounce Letter" },
 ];
 
 const FONT_WEIGHTS  = [400, 500, 600, 700, 800, 900];

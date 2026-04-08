@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# editor / AI tool configs (local only)
+.claude/
+.mcp.json
+.cursorrules
+.windsurfrules
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

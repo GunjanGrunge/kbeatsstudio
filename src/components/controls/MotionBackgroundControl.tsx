@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
-import { X } from "lucide-react";
+import { X, Search, Loader2 } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 import { Slider } from "@/components/ui/slider";
 import type { MotionBgStyle, MotionBgConfig } from "@/types/studio";
+
+interface PixabayHit {
+  id: number;
+  tags: string;
+  videos: {
+    medium: { url: string };
+    tiny: { thumbnail: string };
+  };
+}
 
 interface StyleOption {
   value: MotionBgStyle;
@@ -23,6 +32,7 @@ const STYLE_OPTIONS: StyleOption[] = [
   { value: "cyber-rain",      label: "Cyber Rain",       description: "Matrix glyphs + kanji digital rain" },
   { value: "frequency-wave",  label: "EQ Spectrum",      description: "Ring visualiser + slam EQ bars" },
   { value: "lyrics-float",    label: "Lyrics Float",     description: "Words drift, zoom, burst, strafe" },
+  { value: "pixabay-video",   label: "Pixabay Video",    description: "Search stock motion videos" },
 ];
 
 const DEFAULT_PALETTES: { label: string; colors: [string, string, string, string] }[] = [
@@ -45,6 +55,26 @@ export function MotionBackgroundControl({ overlayId }: Props) {
   const updateOverlay = useStudioStore((s) => s.updateOverlay);
 
   const [editingColorIdx, setEditingColorIdx] = useState<number | null>(null);
+  const [pixabayQuery, setPixabayQuery] = useState("");
+  const [pixabayResults, setPixabayResults] = useState<PixabayHit[]>([]);
+  const [pixabayLoading, setPixabayLoading] = useState(false);
+  const [pixabayError, setPixabayError] = useState<string | null>(null);
+
+  const searchPixabay = useCallback(async () => {
+    if (!pixabayQuery.trim()) return;
+    setPixabayLoading(true);
+    setPixabayError(null);
+    try {
+      const res = await fetch(`/api/pixabay/search?q=${encodeURIComponent(pixabayQuery)}&per_page=20`);
+      if (!res.ok) throw new Error("Search failed");
+      const data = await res.json();
+      setPixabayResults(data.hits ?? []);
+    } catch {
+      setPixabayError("Could not load results. Check your API key.");
+    } finally {
+      setPixabayLoading(false);
+    }
+  }, [pixabayQuery]);
 
   if (!overlay) return null;
 
@@ -106,8 +136,145 @@ export function MotionBackgroundControl({ overlayId }: Props) {
         </div>
       </div>
 
+      {/* ── Pixabay Video search (only when style = pixabay-video) ── */}
+      {cfg.style === "pixabay-video" && (
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+            Search Videos
+          </p>
+
+          {/* Search input */}
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={pixabayQuery}
+              onChange={(e) => setPixabayQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && searchPixabay()}
+              placeholder="e.g. abstract, fire, space..."
+              className="flex-1 rounded-lg px-3 py-2 text-xs outline-none focus:ring-1"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#cccccc",
+                fontFamily: "Outfit, sans-serif",
+              }}
+            />
+            <button
+              onClick={searchPixabay}
+              disabled={pixabayLoading}
+              className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+              style={{
+                background: "rgba(204,255,0,0.12)",
+                border: "1px solid rgba(204,255,0,0.3)",
+                color: "#ccff00",
+                flexShrink: 0,
+              }}
+            >
+              {pixabayLoading
+                ? <Loader2 size={13} className="animate-spin" />
+                : <Search size={13} />}
+            </button>
+          </div>
+
+          {/* Error */}
+          {pixabayError && (
+            <p className="text-[10px] text-red-400" style={{ fontFamily: "Outfit, sans-serif" }}>
+              {pixabayError}
+            </p>
+          )}
+
+          {/* Currently selected video */}
+          {cfg.pixabayThumbUrl && (
+            <div className="space-y-1">
+              <p className="text-[9px] text-[#777777]" style={{ fontFamily: "Outfit, sans-serif" }}>Selected</p>
+              <img
+                src={cfg.pixabayThumbUrl}
+                alt="Selected background"
+                className="w-full rounded-lg object-cover"
+                style={{ height: 60, outline: "2px solid #ccff00", outlineOffset: 2 }}
+              />
+            </div>
+          )}
+
+          {/* Video fit toggle */}
+          {cfg.pixabayVideoUrl && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+                Fit
+              </p>
+              <div className="flex gap-1.5">
+                {(["cover", "contain", "fill"] as const).map((fit) => {
+                  const isActive = (cfg.videoFit ?? "cover") === fit;
+                  return (
+                    <button
+                      key={fit}
+                      onClick={() => patch({ videoFit: fit })}
+                      className="flex-1 py-1.5 rounded-lg text-[10px] capitalize transition-all"
+                      style={{
+                        background: isActive ? "rgba(204,255,0,0.08)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isActive ? "rgba(204,255,0,0.35)" : "rgba(255,255,255,0.07)"}`,
+                        color: isActive ? "#ccff00" : "#777777",
+                        fontFamily: "Outfit, sans-serif",
+                      }}
+                    >
+                      {fit}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Results grid */}
+          {pixabayResults.length > 0 && (
+            <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
+              {pixabayResults.map((hit) => {
+                const isSelected = cfg.pixabayVideoId === hit.id;
+                return (
+                  <button
+                    key={hit.id}
+                    onClick={() => patch({
+                      pixabayVideoUrl: hit.videos.medium.url,
+                      pixabayVideoId: hit.id,
+                      pixabayThumbUrl: hit.videos.tiny.thumbnail,
+                    })}
+                    className="relative rounded-lg overflow-hidden transition-all"
+                    style={{
+                      outline: isSelected ? "2px solid #ccff00" : "1px solid rgba(255,255,255,0.08)",
+                      outlineOffset: isSelected ? 2 : 0,
+                    }}
+                    title={hit.tags}
+                  >
+                    <img
+                      src={hit.videos.tiny.thumbnail}
+                      alt={hit.tags}
+                      className="w-full object-cover"
+                      style={{ height: 52 }}
+                    />
+                    {isSelected && (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center"
+                        style={{ background: "rgba(204,255,0,0.15)" }}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-[#ccff00]" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {!pixabayLoading && pixabayResults.length === 0 && pixabayQuery && !pixabayError && (
+            <p className="text-[10px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+              No results. Try a different search term.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── Colour palette presets ────────────────────────── */}
-      <div className="space-y-2">
+      <div className="space-y-2" style={{ display: cfg.style === "pixabay-video" ? "none" : undefined }}>
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#F7F6E5]" style={{ fontFamily: "Unbounded, sans-serif" }}>
           Colour Palette
         </p>
@@ -174,31 +341,34 @@ export function MotionBackgroundControl({ overlayId }: Props) {
         )}
       </div>
 
-      {/* ── Speed ────────────────────────────────────────── */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
-          <span>Speed</span>
-          <span>{cfg.speed.toFixed(1)}×</span>
-        </div>
-        <Slider
-          min={0.1} max={3} step={0.1}
-          value={[cfg.speed]}
-          onValueChange={([v]) => patch({ speed: v })}
-        />
-      </div>
+      {/* ── Speed + Intensity (hidden for pixabay-video) ─────── */}
+      {cfg.style !== "pixabay-video" && (
+        <>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
+              <span>Speed</span>
+              <span>{cfg.speed.toFixed(1)}×</span>
+            </div>
+            <Slider
+              min={0.1} max={3} step={0.1}
+              value={[cfg.speed]}
+              onValueChange={([v]) => patch({ speed: v })}
+            />
+          </div>
 
-      {/* ── Intensity ─────────────────────────────────────── */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
-          <span>Intensity</span>
-          <span>{Math.round(cfg.intensity * 100)}%</span>
-        </div>
-        <Slider
-          min={0.1} max={1} step={0.01}
-          value={[cfg.intensity]}
-          onValueChange={([v]) => patch({ intensity: v })}
-        />
-      </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
+              <span>Intensity</span>
+              <span>{Math.round(cfg.intensity * 100)}%</span>
+            </div>
+            <Slider
+              min={0.1} max={1} step={0.01}
+              value={[cfg.intensity]}
+              onValueChange={([v]) => patch({ intensity: v })}
+            />
+          </div>
+        </>
+      )}
 
       {/* ── Lyrics Float source (only when style = lyrics-float) ── */}
       {cfg.style === "lyrics-float" && (

@@ -66,6 +66,16 @@ export const LYRICS_VARIANTS: VariantOption[] = [
   { value: "glitch-scatter",   label: "Glitch Scatter",    description: "Chars scatter in/out with RGB glitch" },
   { value: "fragment-shatter", label: "Fragment Shatter",  description: "Words shatter in and explode out" },
   { value: "pulse-smoke",      label: "Pulse Smoke",       description: "Text emerges from smoke, pulses, dissolves" },
+  { value: "dust-dissolve",    label: "Dust Dissolve",     description: "Letters crumble into gold dust and drift away" },
+  { value: "hologram-scan",    label: "Hologram Scan",     description: "Beam sweeps down, text locks in with glitch flash" },
+  { value: "magnetic-distort", label: "Magnetic Distort",  description: "Letters warp in a force field, spring to rest" },
+  { value: "shockwave-burst",  label: "Shockwave Burst",   description: "Words slam in with expanding ring impact" },
+  { value: "mirror-echo",      label: "Mirror Echo",       description: "Ghost copies converge into the real word" },
+  { value: "ink-bleed",        label: "Ink Bleed",         description: "Chars seep in like ink soaking into paper" },
+  { value: "liquid-drip",      label: "Liquid Drip",       description: "Letters melt down and reform from below" },
+  { value: "light-stroke",     label: "Light Stroke",      description: "Neon outline traces each letter then fills" },
+  { value: "cinematic-blur",   label: "Cinematic Blur",    description: "Depth-of-field sharpens from soft focus" },
+  { value: "bounce-letter",    label: "Bounce Letter",     description: "Letters drop and bounce like rubber balls" },
 ];
 
 export function AnimationVariantControl({ overlayId, variants, defaultVariant, sectionLabel }: Props) {

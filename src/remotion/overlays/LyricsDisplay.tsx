@@ -829,6 +829,842 @@ function PulseSmokeLine({
   );
 }
 
+// ─── Dust Dissolve ────────────────────────────────────────────────────────────
+// Letters spring in from below, then crumble into rising gold-dust particles on exit.
+function DustDissolveLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = overlay.color ?? "#ffffff";
+  const chars = [...line.text];
+
+  // Hold phase: last 25% of duration is the dissolve
+  const dissolveStart = lineDuration * 0.75;
+  const isDissolving = relativeFrame >= dissolveStart;
+  const dissolveFrame = Math.max(0, relativeFrame - dissolveStart);
+
+  // Per-char spring in
+  const entryProgress = chars.map((_, i) => {
+    const stagger = i * 1.2;
+    return spring({
+      frame: Math.max(0, relativeFrame - stagger),
+      fps,
+      config: { damping: 10, stiffness: 280, mass: 0.5 },
+      from: 0,
+      to: 1,
+    });
+  });
+
+  // Per-char dissolve: opacity + translateY upward + slight scale-down
+  const dissolveProgress = chars.map((_, i) => {
+    const stagger = i * 1.5 + seededRand(i * 3) * 4;
+    return spring({
+      frame: Math.max(0, dissolveFrame - stagger),
+      fps,
+      config: { damping: 14, stiffness: 160, mass: 0.8 },
+      from: 0,
+      to: 1,
+    });
+  });
+
+  // Dust particles per char (3 particles each)
+  const PARTICLES_PER_CHAR = 3;
+
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {/* Main text chars */}
+      <div style={{ display: "inline-flex", flexWrap: "nowrap" }}>
+        {chars.map((ch, i) => {
+          const entry = entryProgress[i];
+          const diss = isDissolving ? dissolveProgress[i] : 0;
+          const charOpacity = entry * (1 - diss);
+          const entryY = interpolate(entry, [0, 1], [30, 0]);
+          const dissY = interpolate(diss, [0, 1], [0, -20]);
+          const dissScale = interpolate(diss, [0, 1], [1, 0.4]);
+
+          return (
+            <span
+              key={i}
+              style={{
+                ...base,
+                color,
+                display: "inline-block",
+                opacity: charOpacity,
+                transform: `translateY(${entryY + dissY}px) scale(${dissScale})`,
+                transformOrigin: "bottom center",
+                whiteSpace: "pre",
+              }}
+            >
+              {ch}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* Dust particles — only visible during dissolve */}
+      {isDissolving &&
+        chars.map((_, ci) =>
+          Array.from({ length: PARTICLES_PER_CHAR }, (__, pi) => {
+            const seed = ci * PARTICLES_PER_CHAR + pi;
+            const px = (ci / Math.max(chars.length - 1, 1)) * 100; // % across text width
+            const angle = seededRand(seed * 7) * Math.PI * 2;
+            const dist = 20 + seededRand(seed * 3 + 1) * 50;
+            const diss = dissolveProgress[ci];
+            const pX = Math.cos(angle) * dist * diss;
+            const pY = Math.sin(angle) * dist * diss - 30 * diss; // drift upward
+            const pOpacity = interpolate(diss, [0, 0.3, 1], [0, 0.9, 0]);
+            const pSize = 2 + seededRand(seed * 5) * 3;
+            const goldHue = seededRand(seed * 2) > 0.5 ? "#ffd700" : "#ffaa00";
+
+            return (
+              <div
+                key={`p-${ci}-${pi}`}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: `${px}%`,
+                  width: pSize,
+                  height: pSize,
+                  borderRadius: "50%",
+                  background: goldHue,
+                  opacity: pOpacity,
+                  transform: `translate(${pX}px, ${pY}px)`,
+                  pointerEvents: "none",
+                  boxShadow: `0 0 ${pSize * 2}px ${goldHue}`,
+                }}
+              />
+            );
+          })
+        )}
+    </div>
+  );
+}
+
+// ─── Hologram Scan ────────────────────────────────────────────────────────────
+// A cyan scan beam sweeps downward. Text is ghosted before the beam, locks in solid after.
+function HologramScanLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = overlay.color ?? "#ffffff";
+
+  // Scan completes in first 30% of line duration
+  const scanDuration = lineDuration * 0.3;
+  const scanProgress = interpolate(relativeFrame, [0, scanDuration], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Exit: fade out at the very end
+  const exitStart = lineDuration * 0.85;
+  const exitOpacity = interpolate(relativeFrame, [exitStart, lineDuration], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Chromatic aberration flash just as the scan completes
+  const flashFrame = scanDuration;
+  const flashProgress = spring({
+    frame: Math.max(0, relativeFrame - flashFrame),
+    fps,
+    config: { damping: 8, stiffness: 600, mass: 0.3 },
+    from: 0,
+    to: 1,
+  });
+  const chromaticOffset = interpolate(flashProgress, [0, 0.2, 1], [6, 0, 0]);
+
+  // Text opacity: ghosted (0.15) before scan reaches, solid after
+  const textOpacity = scanProgress >= 1
+    ? exitOpacity
+    : interpolate(scanProgress, [0, 1], [0.15, 1]);
+
+  // Scan beam Y position (top → bottom of element)
+  const beamY = interpolate(scanProgress, [0, 1], [-10, 110]); // %
+
+  return (
+    <div style={{ position: "relative", display: "inline-block", overflow: "visible", opacity: exitOpacity }}>
+      {/* Ghosted pre-reveal text */}
+      <div
+        style={{
+          ...base,
+          color,
+          opacity: textOpacity,
+          filter: scanProgress < 1 ? `blur(${interpolate(scanProgress, [0, 1], [2, 0])}px)` : undefined,
+          position: "relative",
+          whiteSpace: "pre",
+        }}
+      >
+        {line.text}
+      </div>
+
+      {/* Chromatic aberration layers — flash on lock-in */}
+      {chromaticOffset > 0.5 && (
+        <>
+          <div style={{
+            position: "absolute", inset: 0, color: "#ff0055", opacity: 0.5,
+            transform: `translateX(${-chromaticOffset}px)`,
+            ...base, pointerEvents: "none", whiteSpace: "pre",
+          }}>{line.text}</div>
+          <div style={{
+            position: "absolute", inset: 0, color: "#00ffff", opacity: 0.5,
+            transform: `translateX(${chromaticOffset}px)`,
+            ...base, pointerEvents: "none", whiteSpace: "pre",
+          }}>{line.text}</div>
+        </>
+      )}
+
+      {/* Scan beam */}
+      {scanProgress < 1 && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: `${beamY}%`,
+            height: 3,
+            background: "linear-gradient(90deg, transparent, #00ffff, #ffffff, #00ffff, transparent)",
+            boxShadow: "0 0 12px #00ffff, 0 0 24px #00ffff88",
+            pointerEvents: "none",
+            opacity: 0.9,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Magnetic Distort ─────────────────────────────────────────────────────────
+// Letters warp sinusoidally as if inside a magnetic field, spring in on entry, spring out on exit.
+function MagneticDistortLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = overlay.color ?? "#ffffff";
+  const chars = [...line.text];
+
+  // Entry spring per char
+  const entryProgress = chars.map((_, i) => {
+    return spring({
+      frame: Math.max(0, relativeFrame - i * 1.5),
+      fps,
+      config: { damping: 9, stiffness: 220, mass: 0.7 },
+      from: 0,
+      to: 1,
+    });
+  });
+
+  // Exit spring per char (reversed)
+  const exitStart = lineDuration * 0.8;
+  const exitProgress = chars.map((_, i) => {
+    const stagger = (chars.length - 1 - i) * 1.2;
+    return spring({
+      frame: Math.max(0, relativeFrame - exitStart - stagger),
+      fps,
+      config: { damping: 10, stiffness: 180, mass: 0.6 },
+      from: 0,
+      to: 1,
+    });
+  });
+
+  // Field amplitude: ramps up over first 20 frames, holds, then settles near exit
+  const fieldAmplitude = interpolate(
+    relativeFrame,
+    [0, 20, lineDuration * 0.7, lineDuration * 0.85],
+    [0, 1, 1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+
+  return (
+    <div style={{ display: "inline-flex", flexWrap: "nowrap" }}>
+      {chars.map((ch, i) => {
+        const entry = entryProgress[i];
+        const exit = exitProgress[i];
+        const charOpacity = entry * (1 - exit);
+
+        // Magnetic field displacement: unique frequency per char
+        const freq = 0.08 + seededRand(i * 5) * 0.06;
+        const phaseX = seededRand(i * 3) * Math.PI * 2;
+        const phaseY = seededRand(i * 7 + 1) * Math.PI * 2;
+        const ampX = (8 + seededRand(i * 2) * 12) * fieldAmplitude;
+        const ampY = (4 + seededRand(i * 4) * 6) * fieldAmplitude;
+        const distX = Math.sin(relativeFrame * freq + phaseX) * ampX * entry;
+        const distY = Math.cos(relativeFrame * freq * 0.7 + phaseY) * ampY * entry;
+
+        const entryY = interpolate(entry, [0, 1], [40, 0]);
+        const exitY = interpolate(exit, [0, 1], [0, -30]);
+        const scale = interpolate(entry, [0, 1], [0.5, 1]) * interpolate(exit, [0, 1], [1, 0.3]);
+
+        return (
+          <span
+            key={i}
+            style={{
+              ...base,
+              color,
+              display: "inline-block",
+              opacity: charOpacity,
+              transform: `translate(${distX}px, ${entryY + exitY + distY}px) scale(${scale})`,
+              transformOrigin: "center bottom",
+              whiteSpace: "pre",
+              filter: fieldAmplitude > 0.5
+                ? `drop-shadow(0 0 ${fieldAmplitude * 8}px ${color}88)`
+                : undefined,
+            }}
+          >
+            {ch}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Shockwave Burst ──────────────────────────────────────────────────────────
+// Words slam in from scale 3→1 with a radial shockwave ring expanding outward.
+function ShockwaveBurstLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = overlay.color ?? "#ffffff";
+  const words = line.text.split(" ");
+
+  // Exit fade
+  const exitStart = lineDuration * 0.82;
+  const exitOpacity = interpolate(relativeFrame, [exitStart, lineDuration], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const wordData = words.map((word, i) => {
+    const stagger = i * 5;
+    const entryFrame = Math.max(0, relativeFrame - stagger);
+
+    // Word slams in: scale 3→1, opacity 0→1, very fast high stiffness
+    const impactSpring = spring({
+      frame: entryFrame,
+      fps,
+      config: { damping: 7, stiffness: 500, mass: 0.4 },
+      from: 0,
+      to: 1,
+    });
+
+    // Shockwave ring: expands right after impact, lasts ~20 frames
+    const ringSpring = spring({
+      frame: entryFrame,
+      fps,
+      config: { damping: 20, stiffness: 200, mass: 1 },
+      from: 0,
+      to: 1,
+    });
+
+    const wordScale = interpolate(impactSpring, [0, 1], [3, 1]);
+    const wordOpacity = interpolate(impactSpring, [0, 0.3, 1], [0, 1, 1]);
+    const ringRadius = interpolate(ringSpring, [0, 1], [0, 80]);
+    const ringOpacity = interpolate(ringSpring, [0, 0.1, 1], [0, 0.9, 0]);
+
+    // Brightness flash on impact
+    const brightness = interpolate(impactSpring, [0, 0.15, 1], [3, 1.5, 1]);
+
+    return { word, wordScale, wordOpacity, ringRadius, ringOpacity, brightness };
+  });
+
+  return (
+    <div style={{ display: "inline-flex", gap: "0.3em", alignItems: "center", opacity: exitOpacity }}>
+      {wordData.map(({ word, wordScale, wordOpacity, ringRadius, ringOpacity, brightness }, i) => (
+        <div key={i} style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+          {/* Shockwave ring */}
+          <svg
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              overflow: "visible",
+              pointerEvents: "none",
+              opacity: ringOpacity,
+            }}
+            width={1}
+            height={1}
+          >
+            <circle
+              cx={0}
+              cy={0}
+              r={ringRadius}
+              fill="none"
+              stroke={color}
+              strokeWidth={2.5}
+              strokeOpacity={ringOpacity}
+            />
+          </svg>
+
+          {/* Word */}
+          <span
+            style={{
+              ...base,
+              color,
+              display: "inline-block",
+              opacity: wordOpacity,
+              transform: `scale(${wordScale})`,
+              transformOrigin: "center center",
+              filter: `brightness(${brightness}) drop-shadow(0 0 ${(brightness - 1) * 20}px ${color})`,
+              whiteSpace: "pre",
+            }}
+          >
+            {word}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Mirror Echo ──────────────────────────────────────────────────────────────
+// Ghost copies at ±offset converge into the real word as it fades in.
+function MirrorEchoLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = overlay.color ?? "#ffffff";
+  const words = line.text.split(" ");
+
+  // Exit fade
+  const exitStart = lineDuration * 0.80;
+  const exitOpacity = interpolate(relativeFrame, [exitStart, lineDuration], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const wordData = words.map((word, i) => {
+    const stagger = i * 4;
+    const entryFrame = Math.max(0, relativeFrame - stagger);
+
+    // Main word spring in
+    const focusSpring = spring({
+      frame: entryFrame,
+      fps,
+      config: { damping: 12, stiffness: 160, mass: 0.9 },
+      from: 0,
+      to: 1,
+    });
+
+    // Ghost offset: starts wide, collapses to 0
+    const ghostOffset = interpolate(focusSpring, [0, 1], [40, 0]);
+    // Ghost opacity: starts at 0.4, fades out as word locks in
+    const ghostOpacity = interpolate(focusSpring, [0, 0.5, 1], [0.35, 0.2, 0]);
+    // Real word opacity: fades in as ghosts collapse
+    const wordOpacity = interpolate(focusSpring, [0, 0.4, 1], [0, 0.6, 1]);
+    // Slight blur on ghosts
+    const ghostBlur = interpolate(focusSpring, [0, 1], [4, 0]);
+
+    return { word, ghostOffset, ghostOpacity, wordOpacity, ghostBlur };
+  });
+
+  return (
+    <div style={{ display: "inline-flex", gap: "0.3em", alignItems: "center", opacity: exitOpacity }}>
+      {wordData.map(({ word, ghostOffset, ghostOpacity, wordOpacity, ghostBlur }, i) => (
+        <div key={i} style={{ position: "relative", display: "inline-block" }}>
+          {/* Ghost left */}
+          <span
+            style={{
+              ...base,
+              color,
+              position: "absolute",
+              left: 0,
+              top: 0,
+              opacity: ghostOpacity,
+              transform: `translateX(${-ghostOffset}px)`,
+              filter: `blur(${ghostBlur}px)`,
+              pointerEvents: "none",
+              whiteSpace: "pre",
+            }}
+          >
+            {word}
+          </span>
+
+          {/* Ghost right */}
+          <span
+            style={{
+              ...base,
+              color,
+              position: "absolute",
+              left: 0,
+              top: 0,
+              opacity: ghostOpacity * 0.7,
+              transform: `translateX(${ghostOffset}px)`,
+              filter: `blur(${ghostBlur * 1.5}px)`,
+              pointerEvents: "none",
+              whiteSpace: "pre",
+            }}
+          >
+            {word}
+          </span>
+
+          {/* Real word */}
+          <span
+            style={{
+              ...base,
+              color,
+              display: "inline-block",
+              opacity: wordOpacity,
+              whiteSpace: "pre",
+              position: "relative",
+            }}
+          >
+            {word}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Batch 2 Variants ---
+
+// INK BLEED — characters seep in one by one like ink soaking into paper.
+// Each char fades in with a scaleX expansion (0.6→1) and slight blur (8px→0),
+// staggered by 3 frames. On exit, chars bleed out in reverse.
+function InkBleedLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = line.color ?? overlay.color ?? "#ffffff";
+  const chars = (line.text ?? "").split("");
+  const stagger = 3;
+
+  return (
+    <div style={{ ...base, display: "inline-flex", flexWrap: "wrap", color }}>
+      {chars.map((ch, i) => {
+        const inStart = i * stagger;
+        const inEnd = inStart + 14;
+        const outStart = lineDuration - 20;
+        const outEnd = lineDuration;
+
+        const entryProgress = spring({
+          frame: relativeFrame - inStart,
+          fps,
+          config: { damping: 18, stiffness: 140, mass: 0.6 },
+        });
+        const exitOpacity = interpolate(relativeFrame, [outStart, outEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+        const opacity = entryProgress * exitOpacity;
+        const scaleX = interpolate(entryProgress, [0, 1], [0.5, 1]);
+        const blur = interpolate(entryProgress, [0, 1], [8, 0]);
+
+        return (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              opacity,
+              transform: `scaleX(${scaleX})`,
+              filter: `blur(${blur}px)`,
+              transformOrigin: "left center",
+              whiteSpace: ch === " " ? "pre" : undefined,
+            }}
+          >
+            {ch === " " ? "\u00A0" : ch}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// LIQUID DRIP — letters appear to melt down from the top, dripping into position.
+// Entry: each char drops from translateY=-60px with a wobbly spring (low damping).
+// A per-char scaleY starts at 0.3 (squashed) and springs to 1.
+// Exit: chars melt downward (translateY 0 → +80px) + fade.
+function LiquidDripLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = line.color ?? overlay.color ?? "#ffffff";
+  const chars = (line.text ?? "").split("");
+  const stagger = 4;
+
+  function seededRand(seed: number) {
+    return Math.abs(Math.sin(seed * 9301 + 49297)) % 1;
+  }
+
+  return (
+    <div style={{ ...base, display: "inline-flex", flexWrap: "wrap", color }}>
+      {chars.map((ch, i) => {
+        const inStart = i * stagger;
+        const wobble = seededRand(i);
+        const entrySpring = spring({
+          frame: relativeFrame - inStart,
+          fps,
+          config: { damping: 8 + wobble * 6, stiffness: 120 + wobble * 40, mass: 0.8 },
+        });
+
+        const outStart = lineDuration - 25;
+        const outProgress = interpolate(relativeFrame, [outStart, lineDuration], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+        const translateY = interpolate(entrySpring, [0, 1], [-60, 0]) + outProgress * 80;
+        const scaleY = interpolate(entrySpring, [0, 1], [0.2, 1]) * (1 - outProgress * 0.8);
+        const opacity = entrySpring * (1 - outProgress);
+
+        return (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              opacity,
+              transform: `translateY(${translateY}px) scaleY(${scaleY})`,
+              transformOrigin: "bottom center",
+              whiteSpace: ch === " " ? "pre" : undefined,
+            }}
+          >
+            {ch === " " ? "\u00A0" : ch}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// LIGHT STROKE — a neon outline traces the text, then the fill floods in.
+// Phase 1 (0–40% duration): text is transparent, a cyan border glow pulses in.
+// Phase 2 (40–70%): fill color floods in left→right via a clip-path percentage.
+// Phase 3 (exit): fade out with bloom.
+function LightStrokeLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = line.color ?? overlay.color ?? "#ffffff";
+
+  const phase1End = Math.floor(lineDuration * 0.4);
+  const phase2End = Math.floor(lineDuration * 0.72);
+  const exitStart = Math.floor(lineDuration * 0.88);
+
+  // Glow outline traces in during phase 1
+  const glowProgress = interpolate(relativeFrame, [0, phase1End], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // Fill floods in during phase 2
+  const fillProgress = interpolate(relativeFrame, [phase1End, phase2End], [0, 100], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // Exit
+  const exitOpacity = interpolate(relativeFrame, [exitStart, lineDuration], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  const glowWidth = 1.5;
+  const glowColor = "#00e5ff";
+  const glowBlur = interpolate(glowProgress, [0, 0.5, 1], [0, 12, 6]);
+  const strokeOpacity = interpolate(glowProgress, [0, 0.2, 1], [0, 1, 1]);
+
+  return (
+    <div style={{ position: "relative", display: "inline-block", opacity: exitOpacity }}>
+      {/* Stroke-only ghost — visible during trace phase */}
+      <span
+        style={{
+          ...base,
+          color: "transparent",
+          WebkitTextStroke: `${glowWidth}px ${glowColor}`,
+          textShadow: `0 0 ${glowBlur}px ${glowColor}, 0 0 ${glowBlur * 2}px ${glowColor}`,
+          opacity: strokeOpacity,
+          display: "block",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {line.text}
+      </span>
+
+      {/* Fill floods in via clipPath */}
+      <span
+        style={{
+          ...base,
+          color,
+          position: "absolute",
+          top: 0,
+          left: 0,
+          clipPath: `inset(0 ${100 - fillProgress}% 0 0)`,
+          display: "block",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {line.text}
+      </span>
+    </div>
+  );
+}
+
+// CINEMATIC BLUR — depth-of-field: text blooms from a soft focus blur to sharp.
+// Entry: blur 30px → 0 over first 25 frames, scale 1.08 → 1, opacity 0 → 1.
+// Hold sharp. Exit: scale 0.96, opacity → 0, slight re-blur.
+function CinematicBlurLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = line.color ?? overlay.color ?? "#ffffff";
+
+  const entrySpring = spring({
+    frame: relativeFrame,
+    fps,
+    config: { damping: 22, stiffness: 90, mass: 1 },
+  });
+
+  const exitStart = lineDuration - 20;
+  const exitProgress = interpolate(relativeFrame, [exitStart, lineDuration], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  const entryBlur = interpolate(entrySpring, [0, 1], [30, 0]);
+  const exitBlur = exitProgress * 12;
+  const blur = entryBlur + exitBlur;
+
+  const entryOpacity = interpolate(entrySpring, [0, 0.3], [0, 1]);
+  const exitOpacity = 1 - exitProgress;
+  const opacity = Math.min(entryOpacity, exitOpacity);
+
+  const entryScale = interpolate(entrySpring, [0, 1], [1.08, 1]);
+  const exitScale = interpolate(exitProgress, [0, 1], [1, 0.96]);
+  const scale = entryScale * exitScale;
+
+  return (
+    <span
+      style={{
+        ...base,
+        color,
+        display: "inline-block",
+        opacity,
+        filter: `blur(${blur}px)`,
+        transform: `scale(${scale})`,
+      }}
+    >
+      {line.text}
+    </span>
+  );
+}
+
+// BOUNCE LETTER — letters drop from above and bounce like rubber balls, staggered.
+// Uses a spring with low damping for natural bounce. Each char also squishes
+// on landing (scaleY dips below 1 then recovers). Exit is a quick upward flick.
+function BounceLetterLine({
+  line,
+  relativeFrame,
+  overlay,
+}: {
+  line: LyricLine;
+  relativeFrame: number;
+  overlay: OverlayConfig;
+}) {
+  const { fps } = useVideoConfig();
+  const lineDuration = line.durationInFrames ?? 90;
+  const base = sharedTextStyle(overlay);
+  const color = line.color ?? overlay.color ?? "#ffffff";
+  const chars = (line.text ?? "").split("");
+  const stagger = 4;
+
+  return (
+    <div style={{ ...base, display: "inline-flex", flexWrap: "wrap", color }}>
+      {chars.map((ch, i) => {
+        const inStart = i * stagger;
+        const bounceSpring = spring({
+          frame: relativeFrame - inStart,
+          fps,
+          config: { damping: 9, stiffness: 200, mass: 0.7 },
+        });
+
+        // Squish: scaleY briefly dips to 0.7 at impact then overshoots to 1.05
+        const squishSpring = spring({
+          frame: relativeFrame - inStart,
+          fps,
+          config: { damping: 7, stiffness: 300, mass: 0.4 },
+        });
+
+        const outStart = lineDuration - 14;
+        const exitProgress = interpolate(relativeFrame, [outStart, lineDuration], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+        const translateY = interpolate(bounceSpring, [0, 1], [-120, 0]) + exitProgress * -60;
+        const scaleY = interpolate(squishSpring, [0, 0.3, 0.6, 1], [0.3, 0.65, 1.08, 1]);
+        const scaleX = interpolate(squishSpring, [0, 0.3, 0.6, 1], [1.3, 1.2, 0.95, 1]);
+        const opacity = interpolate(bounceSpring, [0, 0.15], [0, 1]) * (1 - exitProgress);
+
+        return (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              opacity,
+              transform: `translateY(${translateY}px) scaleY(${scaleY}) scaleX(${scaleX})`,
+              transformOrigin: "bottom center",
+              whiteSpace: ch === " " ? "pre" : undefined,
+            }}
+          >
+            {ch === " " ? "\u00A0" : ch}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 // --- Dispatcher ---
 
 function LyricLineRenderer({
@@ -864,6 +1700,26 @@ function LyricLineRenderer({
       return <FragmentShatterLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
     case "pulse-smoke":
       return <PulseSmokeLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "dust-dissolve":
+      return <DustDissolveLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "hologram-scan":
+      return <HologramScanLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "magnetic-distort":
+      return <MagneticDistortLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "shockwave-burst":
+      return <ShockwaveBurstLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "mirror-echo":
+      return <MirrorEchoLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "ink-bleed":
+      return <InkBleedLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "liquid-drip":
+      return <LiquidDripLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "light-stroke":
+      return <LightStrokeLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "cinematic-blur":
+      return <CinematicBlurLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
+    case "bounce-letter":
+      return <BounceLetterLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
     default:
       return <FadeSlideLine line={line} relativeFrame={relativeFrame} overlay={overlay} />;
   }

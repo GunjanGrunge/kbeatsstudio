@@ -14,6 +14,7 @@
 import type { ReactElement } from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
 import type { OverlayConfig, MotionBgConfig, LyricLine } from "@/types/studio";
+import { VideoBackground } from "./VideoBackground";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -1646,6 +1647,17 @@ export function MotionBackground({ overlay, allOverlays }: Props) {
       )}
       {cfg.style === "frequency-wave" && (
         <FrequencyWave cfg={cfg} frame={frame} fps={fps} />
+      )}
+      {cfg.style === "pixabay-video" && (
+        cfg.pixabayVideoUrl
+          ? <VideoBackground videoSrc={cfg.pixabayVideoUrl} videoFit={cfg.videoFit ?? "cover"} opacity={1} />
+          : (
+            <AbsoluteFill style={{ background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "#555555", fontSize: 14, fontFamily: "Outfit, sans-serif" }}>
+                Select a video in the controls panel
+              </span>
+            </AbsoluteFill>
+          )
       )}
     </AbsoluteFill>
   );
