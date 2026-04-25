@@ -7,7 +7,7 @@ import { sharedFrameRef } from "@/lib/sharedRefs";
 import type { OverlayConfig, OverlayType, LyricLine } from "@/types/studio";
 import {
   Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, Film, LucideProps,
-  Play, Pause, SkipBack, ZoomIn, ZoomOut, Plus, PencilRuler, Gauge, Crop, AudioLines, Trash2, Upload, Copy, ClipboardPaste, Scissors, SplitSquareHorizontal,
+  Play, Pause, SkipBack, ZoomIn, ZoomOut, Plus, PencilRuler, Gauge, Crop, AudioLines, Trash2, Upload, Copy, ClipboardPaste, Scissors, SplitSquareHorizontal, Bookmark,
 } from "lucide-react";
 import type { TimelineRegion, TimelineRegionType } from "@/types/studio";
 
@@ -539,6 +539,10 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
   const setOutMarker = useStudioStore((s) => s.setOutMarker);
   const timelineRegions = useStudioStore((s) => s.timelineRegions);
   const addTimelineRegion = useStudioStore((s) => s.addTimelineRegion);
+  const markers = useStudioStore((s) => s.markers);
+  const addMarker = useStudioStore((s) => s.addMarker);
+  const updateMarker = useStudioStore((s) => s.updateMarker);
+  const removeMarker = useStudioStore((s) => s.removeMarker);
   const removeOverlay = useStudioStore((s) => s.removeOverlay);
   const duplicateOverlay = useStudioStore((s) => s.duplicateOverlay);
   const copyOverlay = useStudioStore((s) => s.copyOverlay);
@@ -874,6 +878,18 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
           Sync
         </button>
 
+        {/* ── Add Marker ── */}
+        <div style={{ width: 1, height: 16, background: "#222", marginLeft: 2 }} />
+        <button
+          title="Add marker at playhead (M)"
+          className="flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] transition-colors"
+          style={{ fontFamily: "Outfit, sans-serif", background: "rgba(204,255,0,0.06)", borderColor: "rgba(204,255,0,0.25)", color: "#ccff00" }}
+          onClick={() => addMarker(sharedFrameRef.current)}
+        >
+          <Bookmark size={10} />
+          M
+        </button>
+
         <TimelineRegionInspector regionId={selectedRegionId} />
       </div>
 
@@ -935,17 +951,45 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
                   transform: "rotate(180deg)",
                 }} />
               </div>
-              {/* Ruler ticks */}
+              {/* Ruler ticks — adaptive (BPM-aware when bpm is set) */}
               {(() => {
-                const tickFrames = Math.max(1, Math.round(60 / pxPerFrame));
-                return Array.from({ length: Math.ceil(durationInFrames / tickFrames) + 1 }, (_, i) => i * tickFrames).map((tick) => {
-                  const isMajor = tick % (tickFrames * 4) === 0 || tickFrames >= fps;
+                let minorFrames: number;
+                let majorFrames: number;
+                let getLabel: (frame: number) => string;
+
+                if (bpm && bpm > 0) {
+                  const fpb = (fps * 60) / bpm;
+                  const fpbar = fpb * 4;
+                  const subs = [fpb / 64, fpb / 32, fpb / 16, fpb / 8, fpb / 4, fpb / 2, fpb, fpbar].filter((s) => s >= 1);
+                  minorFrames = subs.find((s) => s * pxPerFrame >= 4) ?? fpbar;
+                  majorFrames = fpb * pxPerFrame >= 30 ? fpb : fpbar;
+                  getLabel = (frame: number) => {
+                    const bar = Math.floor(frame / fpbar) + 1;
+                    const beat = Math.floor((frame % fpbar) / fpb) + 1;
+                    const inBar = frame % fpbar;
+                    const inBeat = frame % fpb;
+                    if (inBar < minorFrames * 0.5) return `${bar}`;
+                    if (inBeat < minorFrames * 0.5 && fpb * pxPerFrame >= 30) return `${bar}.${beat}`;
+                    return "";
+                  };
+                } else {
+                  const niceIntervals = [1, 2, 5, 10, 15, 30, fps, fps * 2, fps * 5, fps * 10, fps * 30, fps * 60];
+                  minorFrames = niceIntervals.find((n) => n * pxPerFrame >= 4) ?? fps;
+                  majorFrames = niceIntervals.find((n) => n * pxPerFrame >= 60) ?? fps * 5;
+                  getLabel = (f: number) => (f % majorFrames < minorFrames * 0.5 ? fmtTime(f, fps) : "");
+                }
+
+                return Array.from({ length: Math.ceil(durationInFrames / minorFrames) + 1 }, (_, i) => {
+                  const frame = Math.round(i * minorFrames);
+                  const left = frame * pxPerFrame;
+                  const isMajor = frame % majorFrames < minorFrames * 0.5;
+                  const label = getLabel(frame);
                   return (
-                    <div key={tick} style={{ position: "absolute", left: tick * pxPerFrame, top: 0, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                    <div key={i} style={{ position: "absolute", left, top: 0, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
                       <div style={{ width: 1, height: isMajor ? 10 : 5, background: isMajor ? "#444" : "#282828", marginTop: isMajor ? 4 : 9 }} />
-                      {isMajor && (
+                      {label && (
                         <span style={{ fontSize: 8, fontFamily: "monospace", color: "#F7F6E5", paddingLeft: 3, whiteSpace: "nowrap", lineHeight: 1 }}>
-                          {fmtTime(tick, fps)}
+                          {label}
                         </span>
                       )}
                     </div>
@@ -1041,6 +1085,47 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
                   </svg>
                 </div>
               )}
+
+              {/* Named markers — draggable flags */}
+              {markers.map((marker) => (
+                <div
+                  key={marker.id}
+                  style={{ position: "absolute", left: marker.frame * pxPerFrame, top: 0, height: "100%", zIndex: 18, pointerEvents: "none" }}
+                >
+                  {/* Vertical line */}
+                  <div style={{ position: "absolute", left: 0, top: 0, width: 1, height: 9999, background: marker.color, opacity: 0.35, pointerEvents: "none" }} />
+                  {/* Flag handle */}
+                  <div
+                    title={marker.label || "Marker (right-click to remove)"}
+                    style={{ position: "absolute", top: 0, left: -6, width: 22, height: 16, cursor: "ew-resize", zIndex: 19, pointerEvents: "all" }}
+                    onContextMenu={(e) => { e.preventDefault(); removeMarker(marker.id); }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const origFrame = marker.frame;
+                      const onMove = (ev: MouseEvent) => {
+                        const newFrame = Math.max(0, Math.min(durationInFrames, Math.round(origFrame + (ev.clientX - startX) / pxPerFrameRef.current)));
+                        updateMarker(marker.id, { frame: newFrame });
+                      };
+                      const onUp = () => {
+                        window.removeEventListener("mousemove", onMove);
+                        window.removeEventListener("mouseup", onUp);
+                      };
+                      window.addEventListener("mousemove", onMove);
+                      window.addEventListener("mouseup", onUp);
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" style={{ display: "block", filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.5))` }}>
+                      <polygon points="0,0 16,0 16,10 8,16 0,10" fill={marker.color} />
+                    </svg>
+                    {marker.label && (
+                      <span style={{ position: "absolute", left: 18, top: 1, fontSize: 8, color: marker.color, whiteSpace: "nowrap", fontFamily: "Outfit, sans-serif", pointerEvents: "none" }}>
+                        {marker.label}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div

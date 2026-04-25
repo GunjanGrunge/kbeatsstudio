@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { v4 as uuidv4 } from "uuid";
-import type { ExportSettings, OverlayConfig, OverlayType, LyricLine, ProjectState, Template, TimelineRegion, TimelineRegionType } from "@/types/studio";
+import type { ExportSettings, Marker, OverlayConfig, OverlayType, LyricLine, ProjectState, Template, TimelineRegion, TimelineRegionType } from "@/types/studio";
 import { TEMPLATES } from "@/types/studio";
 
 // ── Undo/Redo ──────────────────────────────────────────────────────────────
@@ -82,6 +82,14 @@ interface StudioActions {
   // BPM / beat sync
   setBpm: (bpm: number | null) => void;
 
+  // Named markers
+  addMarker: (frame: number, label?: string) => void;
+  updateMarker: (id: string, patch: Partial<Marker>) => void;
+  removeMarker: (id: string) => void;
+
+  // Audio trim
+  setAudioTrimStart: (frame: number | null) => void;
+
   // Timeline markers
   setInMarker: (frame: number | null) => void;
   setOutMarker: (frame: number | null) => void;
@@ -105,6 +113,8 @@ const DEFAULT_STATE: ProjectState = {
   videoCrop: null,
   durationInFrames: 900, // 30s at 30fps
   bpm: null,
+  markers: [],
+  audioTrimStart: null,
   overlays: [],
   selectedOverlayId: null,
   isDirty: false,
@@ -734,6 +744,33 @@ export const useStudioStore = create<StudioStore>()(
           state.isDirty = true;
         }),
 
+      addMarker: (frame, label) =>
+        set((state) => {
+          const colors = ["#ccff00", "#ff6b35", "#4ade80", "#60a5fa", "#f59e0b", "#a78bfa", "#f87171", "#34d399"];
+          const color = colors[state.markers.length % colors.length];
+          state.markers.push({ id: uuidv4(), frame, label: label ?? `Marker ${state.markers.length + 1}`, color });
+          state.isDirty = true;
+        }),
+
+      updateMarker: (id, patch) =>
+        set((state) => {
+          const m = state.markers.find((m) => m.id === id);
+          if (m) Object.assign(m, patch);
+          state.isDirty = true;
+        }),
+
+      removeMarker: (id) =>
+        set((state) => {
+          state.markers = state.markers.filter((m) => m.id !== id);
+          state.isDirty = true;
+        }),
+
+      setAudioTrimStart: (frame) =>
+        set((state) => {
+          state.audioTrimStart = frame;
+          state.isDirty = true;
+        }),
+
       snapOverlayToBeat: (id, fps) => {
         const state = get();
         const overlay = state.overlays.find((o) => o.id === id);
@@ -772,6 +809,8 @@ export const useStudioStore = create<StudioStore>()(
         lastSaved: state.lastSaved,
         inMarker: state.inMarker,
         outMarker: state.outMarker,
+        markers: state.markers,
+        audioTrimStart: state.audioTrimStart,
         timelineRegions: state.timelineRegions,
         exportSettings: state.exportSettings,
         bpm: state.bpm,
@@ -783,6 +822,8 @@ export const useStudioStore = create<StudioStore>()(
         videoVolume: (persisted as Partial<ProjectState>)?.videoVolume ?? DEFAULT_STATE.videoVolume,
         videoCrop: (persisted as Partial<ProjectState>)?.videoCrop ?? DEFAULT_STATE.videoCrop,
         bpm: (persisted as Partial<ProjectState>)?.bpm ?? DEFAULT_STATE.bpm,
+        markers: (persisted as Partial<ProjectState>)?.markers ?? [],
+        audioTrimStart: (persisted as Partial<ProjectState>)?.audioTrimStart ?? null,
         exportSettings: {
           ...DEFAULT_STATE.exportSettings,
           ...((persisted as Partial<ProjectState>)?.exportSettings ?? {}),

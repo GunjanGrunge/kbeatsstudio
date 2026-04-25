@@ -25,6 +25,7 @@ export function PreviewPanel({ playerRef }: Props) {
   const backgroundOpacity = useStudioStore((s) => s.backgroundOpacity);
   const timelineRegions = useStudioStore((s) => s.timelineRegions);
   const videoCrop = useStudioStore((s) => s.videoCrop);
+  const audioTrimStart = useStudioStore((s) => s.audioTrimStart);
 
   const rawInputProps: KBeatsInputProps = useMemo(
     () => ({
@@ -41,8 +42,9 @@ export function PreviewPanel({ playerRef }: Props) {
       overlays,
       timelineRegions,
       videoCrop,
+      audioTrimStart: audioTrimStart ?? undefined,
     }),
-    [audioSrc, videoSrc, videoFit, videoVolume, durationInFrames, template, backgroundColor, backgroundOpacity, overlays, timelineRegions, videoCrop]
+    [audioSrc, videoSrc, videoFit, videoVolume, durationInFrames, template, backgroundColor, backgroundOpacity, overlays, timelineRegions, videoCrop, audioTrimStart]
   );
 
   // Defer to avoid jank while dragging sliders

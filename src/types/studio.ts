@@ -77,6 +77,13 @@ export interface AnnotationConfig {
   cornerRadius?: number;
 }
 
+export interface Marker {
+  id: string;
+  frame: number;
+  label: string;
+  color: string;
+}
+
 export type TimelineRegionType = "speed" | "audio" | "crop";
 
 export interface TimelineRegion {
@@ -245,6 +252,8 @@ export interface ProjectState {
   backgroundOpacity: number; // 0-1
   inMarker: number | null;   // frame number for export in point
   outMarker: number | null;  // frame number for export out point
+  markers: Marker[];         // named user markers on timeline
+  audioTrimStart: number | null; // frames to skip from start of audio
   timelineRegions: TimelineRegion[];
   exportSettings: ExportSettings;
 }
@@ -284,6 +293,8 @@ export interface KBeatsInputProps {
   timelineRegions?: TimelineRegion[];
   /** Frame offset into audio/video to start playback from (for trim) */
   trimStartFrame?: number;
+  /** Frame offset into audio to start from (independent of video trim) */
+  audioTrimStart?: number;
 }
 
 export const TEMPLATES: Template[] = [

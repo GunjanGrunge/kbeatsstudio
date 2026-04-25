@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
       timelineRegions: [],
       bpm: null,
       videoCrop: null,
+      markers: [],
+      audioTrimStart: null,
       exportSettings: {
         format: "mp4",
         quality: "high",

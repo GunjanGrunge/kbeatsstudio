@@ -71,6 +71,7 @@ export function KBeatsComposition({
   timelineRegions = [],
   trimStartFrame = 0,
   videoCrop,
+  audioTrimStart,
 }: KBeatsInputProps) {
   const { durationInFrames } = useVideoConfig();
 
@@ -93,7 +94,7 @@ export function KBeatsComposition({
       />
 
       {/* Audio track (invisible) */}
-      <AudioTrack audioSrc={audioSrc} startFrom={trimStartFrame} />
+      <AudioTrack audioSrc={audioSrc} startFrom={audioTrimStart ?? trimStartFrame} />
       {timelineRegions
         .filter((region) => region.type === "audio" && region.audioSrc)
         .map((region) => (
