@@ -14,6 +14,7 @@ import { TextOverlay } from "../overlays/TextOverlay";
 import { ImageOverlay } from "../overlays/ImageOverlay";
 import { VideoClipOverlay } from "../overlays/VideoClipOverlay";
 import { MotionBackground } from "../overlays/MotionBackground";
+import { AnnotationOverlay } from "../overlays/AnnotationOverlay";
 
 function OverlayRenderer({
   overlay,
@@ -52,6 +53,8 @@ function OverlayRenderer({
       return <ImageOverlay overlay={overlay} />;
     case "video-clip":
       return <VideoClipOverlay overlay={overlay} />;
+    case "annotation":
+      return <AnnotationOverlay overlay={overlay} />;
     default:
       return null;
   }
@@ -61,9 +64,11 @@ export function KBeatsComposition({
   audioSrc,
   videoSrc,
   videoFit,
+  videoVolume = 0,
   backgroundColor,
   backgroundOpacity,
   overlays,
+  timelineRegions = [],
   trimStartFrame = 0,
 }: KBeatsInputProps) {
   const { durationInFrames } = useVideoConfig();
@@ -77,14 +82,28 @@ export function KBeatsComposition({
       <VideoBackground
         videoSrc={videoSrc}
         videoFit={videoFit ?? "cover"}
+        volume={videoVolume}
         backgroundColor={backgroundColor ?? "#050505"}
         backgroundOpacity={backgroundOpacity ?? 1}
         opacity={1}
         startFrom={trimStartFrame}
+        timelineRegions={timelineRegions}
       />
 
       {/* Audio track (invisible) */}
       <AudioTrack audioSrc={audioSrc} startFrom={trimStartFrame} />
+      {timelineRegions
+        .filter((region) => region.type === "audio" && region.audioSrc)
+        .map((region) => (
+          <Sequence
+            key={region.id}
+            from={region.startFrame}
+            durationInFrames={region.durationInFrames}
+            layout="none"
+          >
+            <AudioTrack audioSrc={region.audioSrc ?? null} volume={region.volume ?? 0.6} />
+          </Sequence>
+        ))}
 
       {/* Overlay layers — each wrapped in a Sequence for timing */}
       {visibleOverlays.map((overlay) => (

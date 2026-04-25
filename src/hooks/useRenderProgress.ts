@@ -23,8 +23,12 @@ export function useRenderProgress(renderId: string | null, bucketName: string | 
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/render/${renderId}?bucketName=${bucketName}`);
+        const res = await fetch(`/api/render/${renderId}?bucketName=${encodeURIComponent(bucketName)}`);
         const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error ?? "Failed to check render progress");
+        }
 
         if (data.status === "done") {
           setRenderState({ status: "done", progress: 1, outputUrl: data.outputUrl });
@@ -42,6 +46,12 @@ export function useRenderProgress(renderId: string | null, bucketName: string | 
         }
       } catch (err) {
         console.warn("[useRenderProgress] Poll error:", err);
+        setRenderState({
+          status: "error",
+          progress: 0,
+          error: err instanceof Error ? err.message : "Failed to check render progress",
+        });
+        if (intervalRef.current) clearInterval(intervalRef.current);
       }
     };
 

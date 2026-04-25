@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Music, Video, X, CheckCircle } from "lucide-react";
+import { Upload, Music, Video, X, CheckCircle, Volume2, VolumeX } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 
 export function UploadZone() {
@@ -13,6 +13,8 @@ export function UploadZone() {
   const setVideoSrc = useStudioStore((s) => s.setVideoSrc);
   const videoFit = useStudioStore((s) => s.videoFit);
   const setVideoFit = useStudioStore((s) => s.setVideoFit);
+  const videoVolume = useStudioStore((s) => s.videoVolume);
+  const setVideoVolume = useStudioStore((s) => s.setVideoVolume);
 
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -148,6 +150,27 @@ export function UploadZone() {
                     {fit}
                   </button>
                 ))}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  className="text-[#666] hover:text-[#ccff00] transition-colors"
+                  title={videoVolume > 0 ? "Mute source video audio" : "Unmute source video audio"}
+                  onClick={() => setVideoVolume(videoVolume > 0 ? 0 : 1)}
+                >
+                  {videoVolume > 0 ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={videoVolume}
+                  onChange={(e) => setVideoVolume(Number(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="w-8 text-right text-[9px] text-[#666]" style={{ fontFamily: "Outfit, sans-serif" }}>
+                  {Math.round(videoVolume * 100)}%
+                </span>
               </div>
             </div>
           )}

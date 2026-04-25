@@ -11,6 +11,7 @@ function buildPayload(state: ReturnType<typeof useStudioStore.getState>) {
     audioSrc: state.audioSrc,
     videoSrc: state.videoSrc,
     videoFit: state.videoFit,
+    videoVolume: state.videoVolume,
     durationInFrames: state.durationInFrames,
     overlays: state.overlays,
     selectedOverlayId: null,
@@ -18,6 +19,10 @@ function buildPayload(state: ReturnType<typeof useStudioStore.getState>) {
     lastSaved: null,
     backgroundColor: state.backgroundColor,
     backgroundOpacity: state.backgroundOpacity,
+    inMarker: state.inMarker,
+    outMarker: state.outMarker,
+    timelineRegions: state.timelineRegions,
+    exportSettings: state.exportSettings,
   });
 }
 

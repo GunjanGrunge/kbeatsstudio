@@ -11,7 +11,7 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const bucketName = searchParams.get("bucketName") ?? process.env.S3_BUCKET_NAME!;
 
-    const { getRenderProgress } = await import("@remotion/lambda/client");
+    const { getRenderProgress, presignUrl } = await import("@remotion/lambda/client");
 
     const progress = await getRenderProgress({
       renderId,
@@ -29,10 +29,20 @@ export async function GET(
     }
 
     if (progress.done) {
+      const outputBucket = progress.outBucket ?? bucketName;
+      const signedOutputUrl = progress.outKey
+        ? await presignUrl({
+            region: (process.env.AWS_REGION as "us-east-1") ?? "us-east-1",
+            bucketName: outputBucket,
+            objectKey: progress.outKey,
+            expiresInSeconds: 12 * 3600,
+          })
+        : progress.outputFile;
+
       return NextResponse.json({
         status: "done",
         progress: 1,
-        outputUrl: progress.outputFile,
+        outputUrl: signedOutputUrl,
         outputSizeInBytes: progress.outputSizeInBytes,
       });
     }

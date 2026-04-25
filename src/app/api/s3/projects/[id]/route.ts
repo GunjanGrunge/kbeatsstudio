@@ -32,7 +32,21 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const projectState: ProjectState = { ...body, lastSaved: new Date().toISOString(), isDirty: false };
+    const projectState: ProjectState = {
+      ...body,
+      videoVolume: body.videoVolume ?? 0,
+      timelineRegions: body.timelineRegions ?? [],
+      exportSettings: {
+        format: "mp4",
+        quality: "high",
+        gifFps: 15,
+        gifLoop: true,
+        scale: 1,
+        ...(body.exportSettings ?? {}),
+      },
+      lastSaved: new Date().toISOString(),
+      isDirty: false,
+    };
 
     await writeJsonToS3(`projects/${id}/config.json`, projectState);
 

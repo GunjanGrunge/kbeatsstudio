@@ -4,16 +4,17 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { v4 as uuidv4 } from "uuid";
-import type { OverlayConfig, OverlayType, LyricLine, ProjectState, Template } from "@/types/studio";
+import type { ExportSettings, OverlayConfig, OverlayType, LyricLine, ProjectState, Template, TimelineRegion, TimelineRegionType } from "@/types/studio";
 import { TEMPLATES } from "@/types/studio";
 
 // ── Undo/Redo ──────────────────────────────────────────────────────────────
 // Stored outside the persisted store so they survive HMR but aren't saved to
 // localStorage. We snapshot only the overlay-related fields that users edit.
-type HistorySnapshot = Pick<ProjectState, "overlays" | "backgroundColor" | "backgroundOpacity" | "durationInFrames">;
+type HistorySnapshot = Pick<ProjectState, "overlays" | "backgroundColor" | "backgroundOpacity" | "durationInFrames" | "timelineRegions" | "exportSettings" | "videoVolume" | "bpm">;
 const undoStack: HistorySnapshot[] = [];
 const redoStack: HistorySnapshot[] = [];
 const MAX_HISTORY = 50;
+let overlayClipboard: OverlayConfig | null = null;
 
 function takeSnapshot(state: ProjectState): HistorySnapshot {
   return JSON.parse(JSON.stringify({
@@ -21,6 +22,10 @@ function takeSnapshot(state: ProjectState): HistorySnapshot {
     backgroundColor: state.backgroundColor,
     backgroundOpacity: state.backgroundOpacity,
     durationInFrames: state.durationInFrames,
+    timelineRegions: state.timelineRegions,
+    exportSettings: state.exportSettings,
+    videoVolume: state.videoVolume,
+    bpm: state.bpm,
   }));
 }
 
@@ -35,6 +40,7 @@ interface StudioActions {
   setBackgroundColor: (color: string) => void;
   setBackgroundOpacity: (opacity: number) => void;
   setVideoFit: (fit: "cover" | "contain" | "fill") => void;
+  setVideoVolume: (volume: number) => void;
   markSaved: () => void;
 
   // Undo / Redo
@@ -57,6 +63,11 @@ interface StudioActions {
   toggleOverlayVisibility: (id: string) => void;
   selectOverlay: (id: string | null) => void;
   duplicateOverlay: (id: string) => void;
+  copyOverlay: (id: string) => void;
+  cutOverlay: (id: string) => void;
+  pasteOverlay: (startFrame?: number) => void;
+  splitOverlayAtFrame: (id: string, frame: number) => void;
+  snapOverlayToBeat: (id: string, fps: number) => void;
 
   // Lyric line UI selection (not persisted)
   selectedLyricLineIndex: number | null;
@@ -67,9 +78,17 @@ interface StudioActions {
   updateLyricLine: (overlayId: string, lineIndex: number, patch: Partial<LyricLine>) => void;
   removeLyricLine: (overlayId: string, lineIndex: number) => void;
 
+  // BPM / beat sync
+  setBpm: (bpm: number | null) => void;
+
   // Timeline markers
   setInMarker: (frame: number | null) => void;
   setOutMarker: (frame: number | null) => void;
+  addTimelineRegion: (type: TimelineRegionType) => void;
+  updateTimelineRegion: (id: string, patch: Partial<TimelineRegion>) => void;
+  removeTimelineRegion: (id: string) => void;
+  splitTimelineRegionAtFrame: (id: string, frame: number) => void;
+  updateExportSettings: (patch: Partial<ExportSettings>) => void;
 }
 
 type StudioStore = ProjectState & StudioActions;
@@ -81,7 +100,9 @@ const DEFAULT_STATE: ProjectState = {
   audioSrc: null,
   videoSrc: null,
   videoFit: "cover",
+  videoVolume: 0,
   durationInFrames: 900, // 30s at 30fps
+  bpm: null,
   overlays: [],
   selectedOverlayId: null,
   isDirty: false,
@@ -90,6 +111,14 @@ const DEFAULT_STATE: ProjectState = {
   backgroundOpacity: 1,
   inMarker: null,
   outMarker: null,
+  timelineRegions: [],
+  exportSettings: {
+    format: "mp4",
+    quality: "high",
+    gifFps: 15,
+    gifLoop: true,
+    scale: 1,
+  },
 };
 
 const DEFAULT_OVERLAY_DURATION = 150; // 5s at 30fps
@@ -228,6 +257,28 @@ function createDefaultOverlay(type: OverlayType, fps: number, startFrame = 0): O
           lyricsSourceId: "all",
         },
       };
+    case "annotation":
+      return {
+        ...base,
+        type,
+        label: "Annotation",
+        position: { x: 50, y: 45 },
+        durationInFrames: fps * 4,
+        color: "#ccff00",
+        annotation: {
+          kind: "arrow",
+          width: 22,
+          height: 10,
+          rotation: 0,
+          strokeWidth: 6,
+          borderColor: "#ccff00",
+          fillColor: "rgba(204,255,0,0.12)",
+          textColor: "#050505",
+          arrowDirection: "right",
+          cornerRadius: 10,
+          text: "New drop",
+        },
+      };
     default:
       return { ...base, type };
   }
@@ -246,7 +297,43 @@ const OVERLAY_LABELS: Record<OverlayType, string> = {
   image: "Image",
   "video-clip": "Video Clip",
   "motion-background": "Motion Background",
+  annotation: "Annotation",
 };
+
+function createDefaultTimelineRegion(type: TimelineRegionType, startFrame: number, fps: number, totalFrames: number): TimelineRegion {
+  const durationInFrames = Math.min(fps * 4, Math.max(1, totalFrames - startFrame));
+  if (type === "speed") {
+    return {
+      id: uuidv4(),
+      type,
+      label: "Speed 1.5x",
+      startFrame,
+      durationInFrames,
+      color: "#38bdf8",
+      speed: 1.5,
+    };
+  }
+  if (type === "crop") {
+    return {
+      id: uuidv4(),
+      type,
+      label: "Crop Focus",
+      startFrame,
+      durationInFrames,
+      color: "#f59e0b",
+      crop: { x: 10, y: 10, width: 80, height: 80 },
+    };
+  }
+  return {
+    id: uuidv4(),
+    type,
+    label: "Audio Bed",
+    startFrame,
+    durationInFrames,
+    color: "#a78bfa",
+    volume: 0.6,
+  };
+}
 
 export const useStudioStore = create<StudioStore>()(
   persist(
@@ -280,7 +367,15 @@ export const useStudioStore = create<StudioStore>()(
 
       loadProject: (projectState) =>
         set((state) => {
-          Object.assign(state, projectState);
+          Object.assign(state, {
+            ...projectState,
+            timelineRegions: projectState.timelineRegions ?? [],
+            exportSettings: {
+              ...DEFAULT_STATE.exportSettings,
+              ...(projectState.exportSettings ?? {}),
+            },
+            videoVolume: projectState.videoVolume ?? DEFAULT_STATE.videoVolume,
+          });
         }),
 
       setProjectName: (name) =>
@@ -304,6 +399,12 @@ export const useStudioStore = create<StudioStore>()(
       setVideoFit: (fit) =>
         set((state) => {
           state.videoFit = fit;
+          state.isDirty = true;
+        }),
+
+      setVideoVolume: (volume) =>
+        set((state) => {
+          state.videoVolume = Math.max(0, Math.min(1, volume));
           state.isDirty = true;
         }),
 
@@ -355,6 +456,10 @@ export const useStudioStore = create<StudioStore>()(
           state.backgroundColor = prev.backgroundColor;
           state.backgroundOpacity = prev.backgroundOpacity;
           state.durationInFrames = prev.durationInFrames;
+          state.timelineRegions = prev.timelineRegions;
+          state.exportSettings = prev.exportSettings;
+          state.videoVolume = prev.videoVolume;
+          state.bpm = prev.bpm;
           state.isDirty = true;
           (state as unknown as { canUndo: boolean; canRedo: boolean }).canUndo = undoStack.length > 0;
           (state as unknown as { canUndo: boolean; canRedo: boolean }).canRedo = redoStack.length > 0;
@@ -369,6 +474,10 @@ export const useStudioStore = create<StudioStore>()(
           state.backgroundColor = next.backgroundColor;
           state.backgroundOpacity = next.backgroundOpacity;
           state.durationInFrames = next.durationInFrames;
+          state.timelineRegions = next.timelineRegions;
+          state.exportSettings = next.exportSettings;
+          state.videoVolume = next.videoVolume;
+          state.bpm = next.bpm;
           state.isDirty = true;
           (state as unknown as { canUndo: boolean; canRedo: boolean }).canUndo = undoStack.length > 0;
           (state as unknown as { canUndo: boolean; canRedo: boolean }).canRedo = redoStack.length > 0;
@@ -490,6 +599,62 @@ export const useStudioStore = create<StudioStore>()(
         });
       },
 
+      copyOverlay: (id) => {
+        const original = get().overlays.find((o) => o.id === id);
+        overlayClipboard = original ? JSON.parse(JSON.stringify(original)) : null;
+      },
+
+      cutOverlay: (id) => {
+        const original = get().overlays.find((o) => o.id === id);
+        overlayClipboard = original ? JSON.parse(JSON.stringify(original)) : null;
+        get().pushHistory();
+        set((state) => {
+          state.overlays = state.overlays.filter((o) => o.id !== id);
+          if (state.selectedOverlayId === id) state.selectedOverlayId = null;
+          state.isDirty = true;
+        });
+      },
+
+      pasteOverlay: (startFrame) => {
+        if (!overlayClipboard) return;
+        const copiedOverlay = overlayClipboard;
+        get().pushHistory();
+        set((state) => {
+          const clone = {
+            ...JSON.parse(JSON.stringify(copiedOverlay)),
+            id: uuidv4(),
+            label: `${copiedOverlay.label} (copy)`,
+            startFrame: Math.max(0, Math.min(startFrame ?? copiedOverlay.startFrame + state.template.fps, state.durationInFrames - 1)),
+          };
+          state.overlays.push(clone);
+          state.selectedOverlayId = clone.id;
+          state.isDirty = true;
+        });
+      },
+
+      splitOverlayAtFrame: (id, frame) => {
+        get().pushHistory();
+        set((state) => {
+          const idx = state.overlays.findIndex((o) => o.id === id);
+          if (idx === -1) return;
+          const overlay = state.overlays[idx];
+          const start = overlay.startFrame;
+          const end = overlay.startFrame + overlay.durationInFrames;
+          if (frame <= start || frame >= end) return;
+          const second = {
+            ...JSON.parse(JSON.stringify(overlay)),
+            id: uuidv4(),
+            label: `${overlay.label} split`,
+            startFrame: frame,
+            durationInFrames: end - frame,
+          };
+          overlay.durationInFrames = frame - start;
+          state.overlays.splice(idx + 1, 0, second);
+          state.selectedOverlayId = second.id;
+          state.isDirty = true;
+        });
+      },
+
       setInMarker: (frame) =>
         set((state) => {
           state.inMarker = frame;
@@ -499,6 +664,85 @@ export const useStudioStore = create<StudioStore>()(
         set((state) => {
           state.outMarker = frame;
         }),
+
+      addTimelineRegion: (type) => {
+        get().pushHistory();
+        set((state) => {
+          const currentFrame = (state as unknown as { currentFrame: number }).currentFrame;
+          const region = createDefaultTimelineRegion(type, currentFrame, state.template.fps, state.durationInFrames);
+          state.timelineRegions.push(region);
+          state.isDirty = true;
+        });
+      },
+
+      updateTimelineRegion: (id, patch) => {
+        set((state) => {
+          const region = state.timelineRegions.find((r) => r.id === id);
+          if (!region) return;
+          Object.assign(region, patch);
+          state.isDirty = true;
+        });
+      },
+
+      removeTimelineRegion: (id) => {
+        get().pushHistory();
+        set((state) => {
+          state.timelineRegions = state.timelineRegions.filter((r) => r.id !== id);
+          state.isDirty = true;
+        });
+      },
+
+      splitTimelineRegionAtFrame: (id, frame) => {
+        get().pushHistory();
+        set((state) => {
+          const idx = state.timelineRegions.findIndex((r) => r.id === id);
+          if (idx === -1) return;
+          const region = state.timelineRegions[idx];
+          const start = region.startFrame;
+          const end = region.startFrame + region.durationInFrames;
+          if (frame <= start || frame >= end) return;
+          const second = {
+            ...JSON.parse(JSON.stringify(region)),
+            id: uuidv4(),
+            label: `${region.label} split`,
+            startFrame: frame,
+            durationInFrames: end - frame,
+          };
+          region.durationInFrames = frame - start;
+          state.timelineRegions.splice(idx + 1, 0, second);
+          state.isDirty = true;
+        });
+      },
+
+      updateExportSettings: (patch) =>
+        set((state) => {
+          state.exportSettings = { ...state.exportSettings, ...patch };
+          state.isDirty = true;
+        }),
+
+      setBpm: (bpm) =>
+        set((state) => {
+          state.bpm = bpm;
+          state.isDirty = true;
+        }),
+
+      snapOverlayToBeat: (id, fps) => {
+        const state = get();
+        const overlay = state.overlays.find((o) => o.id === id);
+        if (!overlay) return;
+        // Use BPM if set, otherwise snap to nearest second boundary
+        const framesPerBeat = state.bpm ? (fps * 60) / state.bpm : fps;
+        const snappedStart = Math.round(overlay.startFrame / framesPerBeat) * framesPerBeat;
+        const snappedDur = Math.max(framesPerBeat, Math.round(overlay.durationInFrames / framesPerBeat) * framesPerBeat);
+        get().pushHistory();
+        set((st) => {
+          const ov = st.overlays.find((o) => o.id === id);
+          if (!ov) return;
+          ov.startFrame = Math.max(0, Math.min(snappedStart, st.durationInFrames - 1));
+          ov.durationInFrames = Math.min(snappedDur, st.durationInFrames - ov.startFrame);
+          st.isDirty = true;
+        });
+      },
     })),
     {
       name: "kbeats-studio-project",
@@ -511,6 +755,7 @@ export const useStudioStore = create<StudioStore>()(
         audioSrc: state.audioSrc,
         videoSrc: state.videoSrc,
         videoFit: state.videoFit,
+        videoVolume: state.videoVolume,
         durationInFrames: state.durationInFrames,
         overlays: state.overlays,
         backgroundColor: state.backgroundColor,
@@ -518,6 +763,20 @@ export const useStudioStore = create<StudioStore>()(
         lastSaved: state.lastSaved,
         inMarker: state.inMarker,
         outMarker: state.outMarker,
+        timelineRegions: state.timelineRegions,
+        exportSettings: state.exportSettings,
+        bpm: state.bpm,
+      }),
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<ProjectState>),
+        timelineRegions: (persisted as Partial<ProjectState>)?.timelineRegions ?? [],
+        videoVolume: (persisted as Partial<ProjectState>)?.videoVolume ?? DEFAULT_STATE.videoVolume,
+        bpm: (persisted as Partial<ProjectState>)?.bpm ?? DEFAULT_STATE.bpm,
+        exportSettings: {
+          ...DEFAULT_STATE.exportSettings,
+          ...((persisted as Partial<ProjectState>)?.exportSettings ?? {}),
+        },
       }),
     }
   )

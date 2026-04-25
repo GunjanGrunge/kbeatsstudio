@@ -18,16 +18,19 @@ export function PreviewPanel({ playerRef }: Props) {
   const audioSrc = useStudioStore((s) => s.audioSrc);
   const videoSrc = useStudioStore((s) => s.videoSrc);
   const videoFit = useStudioStore((s) => s.videoFit);
+  const videoVolume = useStudioStore((s) => s.videoVolume);
   const durationInFrames = useStudioStore((s) => s.durationInFrames);
   const overlays = useStudioStore((s) => s.overlays);
   const backgroundColor = useStudioStore((s) => s.backgroundColor);
   const backgroundOpacity = useStudioStore((s) => s.backgroundOpacity);
+  const timelineRegions = useStudioStore((s) => s.timelineRegions);
 
   const rawInputProps: KBeatsInputProps = useMemo(
     () => ({
       audioSrc,
       videoSrc,
       videoFit,
+      videoVolume,
       durationInFrames,
       fps: template.fps,
       width: template.width,
@@ -35,8 +38,9 @@ export function PreviewPanel({ playerRef }: Props) {
       backgroundColor,
       backgroundOpacity,
       overlays,
+      timelineRegions,
     }),
-    [audioSrc, videoSrc, videoFit, durationInFrames, template, backgroundColor, backgroundOpacity, overlays]
+    [audioSrc, videoSrc, videoFit, videoVolume, durationInFrames, template, backgroundColor, backgroundOpacity, overlays, timelineRegions]
   );
 
   // Defer to avoid jank while dragging sliders

@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       audioSrc: null,
       videoSrc: null,
       videoFit: "cover",
+      videoVolume: 0,
       durationInFrames: template.fps * 30,
       overlays: [],
       selectedOverlayId: null,
@@ -47,6 +48,14 @@ export async function POST(req: NextRequest) {
       backgroundOpacity: 1,
       inMarker: null,
       outMarker: null,
+      timelineRegions: [],
+      exportSettings: {
+        format: "mp4",
+        quality: "high",
+        gifFps: 15,
+        gifLoop: true,
+        scale: 1,
+      },
     };
 
     // Write config

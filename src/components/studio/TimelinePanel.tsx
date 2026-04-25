@@ -7,8 +7,9 @@ import { sharedFrameRef } from "@/lib/sharedRefs";
 import type { OverlayConfig, OverlayType, LyricLine } from "@/types/studio";
 import {
   Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, Film, LucideProps,
-  Play, Pause, SkipBack, ZoomIn, ZoomOut, Plus,
+  Play, Pause, SkipBack, ZoomIn, ZoomOut, Plus, PencilRuler, Gauge, Crop, AudioLines, Trash2, Upload, Copy, ClipboardPaste, Scissors, SplitSquareHorizontal,
 } from "lucide-react";
+import type { TimelineRegion, TimelineRegionType } from "@/types/studio";
 
 /* ── constants ─────────────────────────────────────────────── */
 const TRACK_H = 28;
@@ -31,6 +32,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ComponentType<LucideProps>> = {
   image: Image,
   "video-clip": Film,
   "motion-background": Sparkles,
+  annotation: PencilRuler,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
@@ -46,6 +48,13 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   image: "#ff9900",
   "video-clip": "#66aaff",
   "motion-background": "#aa44ff",
+  annotation: "#ccff00",
+};
+
+const REGION_ICONS: Record<TimelineRegionType, React.ComponentType<LucideProps>> = {
+  speed: Gauge,
+  audio: AudioLines,
+  crop: Crop,
 };
 
 /* ── helpers ───────────────────────────────────────────────── */
@@ -292,6 +301,224 @@ function AddLyricLineButton({ overlayId, overlayStartFrame, pxPerFrame, color }:
   );
 }
 
+function TimelineRegionClip({ region, pxPerFrame, totalFrames, isSelected, onSelect }: {
+  region: TimelineRegion;
+  pxPerFrame: number;
+  totalFrames: number;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const updateTimelineRegion = useStudioStore((s) => s.updateTimelineRegion);
+  const removeTimelineRegion = useStudioStore((s) => s.removeTimelineRegion);
+  const Icon = REGION_ICONS[region.type];
+  const left = region.startFrame * pxPerFrame;
+  const width = Math.max(18, region.durationInFrames * pxPerFrame);
+
+  const dragRef = useRef<{ startX: number; origStart: number } | null>(null);
+  const resizeRef = useRef<{ startX: number; origDur: number } | null>(null);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    dragRef.current = { startX: e.clientX, origStart: region.startFrame };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const next = Math.max(0, Math.round(dragRef.current.origStart + (ev.clientX - dragRef.current.startX) / pxPerFrame));
+      updateTimelineRegion(region.id, { startFrame: Math.min(next, totalFrames - region.durationInFrames) });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [region, pxPerFrame, totalFrames, updateTimelineRegion]);
+
+  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    resizeRef.current = { startX: e.clientX, origDur: region.durationInFrames };
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const next = Math.max(1, Math.round(resizeRef.current.origDur + (ev.clientX - resizeRef.current.startX) / pxPerFrame));
+      updateTimelineRegion(region.id, { durationInFrames: Math.min(next, totalFrames - region.startFrame) });
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [region, pxPerFrame, totalFrames, updateTimelineRegion]);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left,
+        top: 4,
+        width,
+        height: TRACK_H - 8,
+        borderRadius: 4,
+        border: `1px solid ${region.color}`,
+        background: isSelected ? `${region.color}36` : `${region.color}24`,
+        color: region.color,
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        paddingLeft: 6,
+        paddingRight: 18,
+        cursor: "grab",
+        overflow: "hidden",
+        boxSizing: "border-box",
+      }}
+      onMouseDown={(e) => {
+        onSelect(region.id);
+        onMouseDown(e);
+      }}
+    >
+      <Icon size={10} style={{ flexShrink: 0 }} />
+      <span className="truncate text-[9px]" style={{ fontFamily: "Outfit, sans-serif" }}>
+        {region.label}
+      </span>
+      <button
+        title="Remove region"
+        style={{ position: "absolute", right: 3, color: region.color, opacity: 0.75 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          removeTimelineRegion(region.id);
+        }}
+      >
+        <Trash2 size={9} />
+      </button>
+      <div
+        style={{ position: "absolute", right: 0, top: 0, width: 8, height: "100%", cursor: "ew-resize" }}
+        onMouseDown={onResizeMouseDown}
+      />
+    </div>
+  );
+}
+
+function TimelineRegionInspector({ regionId }: { regionId: string | null }) {
+  const region = useStudioStore((s) => s.timelineRegions.find((r) => r.id === regionId));
+  const updateTimelineRegion = useStudioStore((s) => s.updateTimelineRegion);
+  const projectId = useStudioStore((s) => s.projectId);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  if (!region) return null;
+
+  const update = (patch: Partial<TimelineRegion>) => updateTimelineRegion(region.id, patch);
+
+  const uploadAudio = async (file: File) => {
+    if (!projectId) return;
+    setUploading(true);
+    try {
+      const res = await fetch("/api/s3/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          fileName: file.name,
+          contentType: file.type,
+          fileType: "audio",
+          uniqueKey: `region-${region.id}`,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Upload failed");
+      const { uploadUrl, publicUrl } = await res.json();
+      await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      update({ audioSrc: publicUrl, label: file.name.replace(/\.[^.]+$/, "").slice(0, 28) || "Audio Bed" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 overflow-hidden">
+      <span className="text-[9px] uppercase tracking-widest" style={{ color: region.color, fontFamily: "Unbounded, sans-serif" }}>
+        {region.type}
+      </span>
+      <input
+        value={region.label}
+        onChange={(e) => update({ label: e.target.value })}
+        className="h-6 w-28 rounded border px-2 text-[10px] text-white outline-none"
+        style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", fontFamily: "Outfit, sans-serif" }}
+      />
+      {region.type === "speed" && (
+        <>
+          <span className="text-[9px]" style={{ color: "#777" }}>Speed</span>
+          {[0.5, 1, 1.5, 2].map((speed) => (
+            <button
+              key={speed}
+              className="rounded border px-1.5 py-0.5 text-[9px]"
+              style={{
+                background: region.speed === speed ? `${region.color}24` : "rgba(255,255,255,0.03)",
+                borderColor: region.speed === speed ? region.color : "rgba(255,255,255,0.08)",
+                color: region.speed === speed ? region.color : "#777",
+              }}
+              onClick={() => update({ speed, label: `Speed ${speed}x` })}
+            >
+              {speed}x
+            </button>
+          ))}
+        </>
+      )}
+      {region.type === "audio" && (
+        <>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void uploadAudio(file);
+              e.currentTarget.value = "";
+            }}
+          />
+          <button
+            className="flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px]"
+            style={{ borderColor: region.audioSrc ? region.color : "rgba(255,255,255,0.08)", color: region.audioSrc ? region.color : "#777" }}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload size={9} />
+            {uploading ? "Uploading" : region.audioSrc ? "Replace" : "Upload"}
+          </button>
+          <span className="text-[9px]" style={{ color: "#777" }}>Vol</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={region.volume ?? 0.6}
+            onChange={(e) => update({ volume: Number(e.target.value) })}
+            className="w-20"
+          />
+        </>
+      )}
+      {region.type === "crop" && (
+        <>
+          {(["x", "y", "width", "height"] as const).map((key) => (
+            <label key={key} className="flex items-center gap-1 text-[9px]" style={{ color: "#777" }}>
+              {key === "width" ? "W" : key === "height" ? "H" : key.toUpperCase()}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={region.crop?.[key] ?? (key === "width" || key === "height" ? 80 : 10)}
+                onChange={(e) => update({ crop: { ...(region.crop ?? { x: 10, y: 10, width: 80, height: 80 }), [key]: Number(e.target.value) } })}
+                className="h-6 w-12 rounded border px-1 text-[10px] text-white outline-none"
+                style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)" }}
+              />
+            </label>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ── main component ────────────────────────────────────────── */
 interface Props {
   playerRef: React.RefObject<PlayerRef | null>;
@@ -310,7 +537,22 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
   const outMarker = useStudioStore((s) => s.outMarker);
   const setInMarker = useStudioStore((s) => s.setInMarker);
   const setOutMarker = useStudioStore((s) => s.setOutMarker);
+  const timelineRegions = useStudioStore((s) => s.timelineRegions);
+  const addTimelineRegion = useStudioStore((s) => s.addTimelineRegion);
+  const removeOverlay = useStudioStore((s) => s.removeOverlay);
+  const duplicateOverlay = useStudioStore((s) => s.duplicateOverlay);
+  const copyOverlay = useStudioStore((s) => s.copyOverlay);
+  const cutOverlay = useStudioStore((s) => s.cutOverlay);
+  const pasteOverlay = useStudioStore((s) => s.pasteOverlay);
+  const splitOverlayAtFrame = useStudioStore((s) => s.splitOverlayAtFrame);
+  const snapOverlayToBeat = useStudioStore((s) => s.snapOverlayToBeat);
+  const bpm = useStudioStore((s) => s.bpm);
+  const setBpm = useStudioStore((s) => s.setBpm);
+  const removeTimelineRegion = useStudioStore((s) => s.removeTimelineRegion);
+  const splitTimelineRegionAtFrame = useStudioStore((s) => s.splitTimelineRegionAtFrame);
   const [zoom, setZoom] = useState(1);
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
+  const [bpmInput, setBpmInput] = useState<string>(bpm !== null ? String(bpm) : "");
 
   // Single scroll container ref — ruler + tracks scroll together as one unit
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -361,6 +603,95 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
   }, [seekTo]);
 
   const reversedOverlays = [...overlays].reverse();
+
+  useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+
+      if (mod && (e.key === "+" || e.key === "=")) {
+        e.preventDefault();
+        setZoom((z) => Math.min(MAX_ZOOM, +(z * 1.4).toFixed(2)));
+        return;
+      }
+      if (mod && e.key === "-") {
+        e.preventDefault();
+        setZoom((z) => Math.max(MIN_ZOOM, +(z / 1.4).toFixed(2)));
+        return;
+      }
+      if (mod && e.key === "0") {
+        e.preventDefault();
+        setZoom(1);
+        return;
+      }
+
+      if ((e.key === "Backspace" || e.key === "Delete")) {
+        if (selectedRegionId) {
+          e.preventDefault();
+          removeTimelineRegion(selectedRegionId);
+          setSelectedRegionId(null);
+          return;
+        }
+        if (selectedId) {
+          e.preventDefault();
+          removeOverlay(selectedId);
+          return;
+        }
+      }
+
+      if (mod && key === "d" && selectedId) {
+        e.preventDefault();
+        duplicateOverlay(selectedId);
+        return;
+      }
+      if (mod && key === "c" && selectedId) {
+        e.preventDefault();
+        copyOverlay(selectedId);
+        return;
+      }
+      if (mod && key === "x" && selectedId) {
+        e.preventDefault();
+        cutOverlay(selectedId);
+        return;
+      }
+      if (mod && key === "v") {
+        e.preventDefault();
+        pasteOverlay(sharedFrameRef.current);
+        return;
+      }
+      if (!mod && key === "s") {
+        if (selectedRegionId) {
+          e.preventDefault();
+          splitTimelineRegionAtFrame(selectedRegionId, sharedFrameRef.current);
+          return;
+        }
+        if (selectedId) {
+          e.preventDefault();
+          splitOverlayAtFrame(selectedId, sharedFrameRef.current);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    selectedId,
+    selectedRegionId,
+    removeOverlay,
+    duplicateOverlay,
+    copyOverlay,
+    cutOverlay,
+    pasteOverlay,
+    splitOverlayAtFrame,
+    removeTimelineRegion,
+    splitTimelineRegionAtFrame,
+  ]);
 
   return (
     <div
@@ -431,6 +762,119 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
             {fmtTime(outMarker - inMarker, fps)}
           </span>
         )}
+
+        <div style={{ width: 1, height: 16, background: "#222", marginLeft: 4 }} />
+        {([
+          ["speed", Gauge, "Speed"],
+          ["audio", AudioLines, "Audio"],
+          ["crop", Crop, "Crop"],
+        ] as const).map(([type, Icon, label]) => (
+          <button
+            key={type}
+            title={`Add ${label} region at playhead`}
+            className="flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] transition-colors"
+            style={{
+              fontFamily: "Outfit, sans-serif",
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.08)",
+              color: "#777",
+            }}
+            onClick={() => addTimelineRegion(type)}
+          >
+            <Icon size={10} />
+            {label}
+          </button>
+        ))}
+        <div style={{ width: 1, height: 16, background: "#222", marginLeft: 2 }} />
+        {([
+          ["copy", Copy, "Copy"],
+          ["cut", Scissors, "Cut"],
+          ["paste", ClipboardPaste, "Paste"],
+          ["duplicate", Plus, "Duplicate"],
+          ["split", SplitSquareHorizontal, "Split"],
+          ["delete", Trash2, "Delete"],
+        ] as const).map(([action, Icon, label]) => {
+          const hasTarget = selectedRegionId !== null || selectedId !== null;
+          const disabled = action !== "paste" && !hasTarget;
+          return (
+            <button
+              key={action}
+              title={label}
+              disabled={disabled}
+              className="flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] transition-colors"
+              style={{
+                fontFamily: "Outfit, sans-serif",
+                background: "rgba(255,255,255,0.04)",
+                borderColor: "rgba(255,255,255,0.08)",
+                color: disabled ? "#333" : "#777",
+                cursor: disabled ? "default" : "pointer",
+              }}
+              onClick={() => {
+                if (action === "copy" && selectedId) copyOverlay(selectedId);
+                if (action === "cut" && selectedId) cutOverlay(selectedId);
+                if (action === "paste") pasteOverlay(sharedFrameRef.current);
+                if (action === "duplicate" && selectedId) duplicateOverlay(selectedId);
+                if (action === "split") {
+                  if (selectedRegionId) splitTimelineRegionAtFrame(selectedRegionId, sharedFrameRef.current);
+                  else if (selectedId) splitOverlayAtFrame(selectedId, sharedFrameRef.current);
+                }
+                if (action === "delete") {
+                  if (selectedRegionId) {
+                    removeTimelineRegion(selectedRegionId);
+                    setSelectedRegionId(null);
+                  } else if (selectedId) {
+                    removeOverlay(selectedId);
+                  }
+                }
+              }}
+            >
+              <Icon size={10} />
+              {label}
+            </button>
+          );
+        })}
+
+        {/* ── BPM / Sync ── */}
+        <div style={{ width: 1, height: 16, background: "#222", marginLeft: 2 }} />
+        <label className="flex items-center gap-1 text-[9px]" style={{ color: "#555", fontFamily: "Outfit, sans-serif" }}>
+          BPM
+          <input
+            type="number"
+            min={40}
+            max={300}
+            placeholder="—"
+            value={bpmInput}
+            onChange={(e) => setBpmInput(e.target.value)}
+            onBlur={() => {
+              const n = parseInt(bpmInput, 10);
+              if (!isNaN(n) && n >= 40 && n <= 300) setBpm(n);
+              else { setBpm(null); setBpmInput(""); }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            className="h-6 w-12 rounded border px-1 text-[10px] text-white outline-none tabular-nums text-center"
+            style={{ background: bpm ? "rgba(204,255,0,0.06)" : "rgba(255,255,255,0.04)", borderColor: bpm ? "rgba(204,255,0,0.3)" : "rgba(255,255,255,0.08)", fontFamily: "Outfit, sans-serif" }}
+          />
+        </label>
+        <button
+          title={bpm ? `Snap to beat (${bpm} BPM)` : "Snap to nearest second (set BPM for beat-sync)"}
+          disabled={!selectedId}
+          className="flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] transition-colors"
+          style={{
+            fontFamily: "Outfit, sans-serif",
+            background: selectedId ? "rgba(204,255,0,0.06)" : "rgba(255,255,255,0.04)",
+            borderColor: selectedId ? "rgba(204,255,0,0.3)" : "rgba(255,255,255,0.08)",
+            color: selectedId ? "#ccff00" : "#333",
+            cursor: selectedId ? "pointer" : "default",
+          }}
+          onClick={() => { if (selectedId) snapOverlayToBeat(selectedId, fps); }}
+        >
+          <Music2 size={10} />
+          Sync
+        </button>
+
+        <TimelineRegionInspector regionId={selectedRegionId} />
       </div>
 
       {/* ── label column + scrollable content ── */}
@@ -440,6 +884,19 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
         <div className="shrink-0 flex flex-col" style={{ width: LABEL_W, background: "#0a0a0a", zIndex: 10, borderRight: "1px solid #1e1e1e" }}>
           {/* Corner above ruler */}
           <div style={{ height: HEADER_H, borderBottom: "1px solid #1e1e1e", flexShrink: 0 }} />
+          <div
+            className="flex items-center gap-1.5 px-2"
+            style={{
+              height: TRACK_H,
+              borderBottom: "1px solid #141414",
+              color: "#777",
+              fontFamily: "Outfit, sans-serif",
+              fontSize: 10,
+            }}
+          >
+            <Gauge size={11} />
+            Regions
+          </div>
           {/* Track labels aligned with track rows */}
           {reversedOverlays.map((overlay) => (
             <TrackLabel key={overlay.id} overlay={overlay} isSelected={selectedId === overlay.id} />
@@ -463,7 +920,7 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
                   left: currentFrame * pxPerFrame,
                   top: 0,
                   // Extends down through all track rows via a tall height
-                  height: HEADER_H + reversedOverlays.length * TRACK_H + 40,
+                  height: HEADER_H + (reversedOverlays.length + 1) * TRACK_H + 40,
                   width: 1,
                   background: "#ccff00",
                   zIndex: 20,
@@ -586,6 +1043,26 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
               )}
             </div>
 
+            <div
+              style={{
+                height: TRACK_H,
+                borderBottom: "1px solid #111",
+                position: "relative",
+                background: "rgba(255,255,255,0.015)",
+              }}
+            >
+              {timelineRegions.map((region) => (
+                <TimelineRegionClip
+                  key={region.id}
+                  region={region}
+                  pxPerFrame={pxPerFrame}
+                  totalFrames={durationInFrames}
+                  isSelected={selectedRegionId === region.id}
+                  onSelect={setSelectedRegionId}
+                />
+              ))}
+            </div>
+
             {/* Track rows */}
             {reversedOverlays.map((overlay) => {
               const isLyrics = overlay.type === "lyrics" && overlay.lyrics && overlay.lyrics.length > 0;
@@ -641,7 +1118,7 @@ export function TimelinePanel({ playerRef, isPlaying }: Props) {
             {/* End marker */}
             <div style={{
               position: "absolute", left: durationInFrames * pxPerFrame, top: 0,
-              height: HEADER_H + reversedOverlays.length * TRACK_H,
+              height: HEADER_H + (reversedOverlays.length + 1) * TRACK_H,
               width: 1, background: "#333", pointerEvents: "none",
             }} />
           </div>

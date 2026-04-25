@@ -6,6 +6,7 @@ const DEFAULT_PROPS: KBeatsInputProps = {
   audioSrc: null,
   videoSrc: null,
   videoFit: "cover",
+  videoVolume: 0,
   durationInFrames: 900,
   fps: 30,
   width: 1920,
@@ -13,6 +14,7 @@ const DEFAULT_PROPS: KBeatsInputProps = {
   backgroundColor: "#050505",
   backgroundOpacity: 1,
   overlays: [],
+  timelineRegions: [],
 };
 
 export function RemotionRoot() {

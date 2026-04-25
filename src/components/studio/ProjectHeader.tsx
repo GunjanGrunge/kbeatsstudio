@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Loader2, Download, ArrowLeft, Pencil, ChevronDown, Save, Undo2, Redo2 } from "lucide-react";
+import { Check, Loader2, Download, ArrowLeft, Pencil, ChevronDown, Save, Undo2, Redo2, FileDown, FileUp, Keyboard } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 import { saveProject } from "@/hooks/useAutoSave";
 import { useRouter } from "next/navigation";
@@ -10,9 +10,10 @@ import { TEMPLATES, type Template } from "@/types/studio";
 
 interface Props {
   onExport: () => void;
+  onShowShortcuts: () => void;
 }
 
-export function ProjectHeader({ onExport }: Props) {
+export function ProjectHeader({ onExport, onShowShortcuts }: Props) {
   const router = useRouter();
   const projectName = useStudioStore((s) => s.projectName);
   const isDirty = useStudioStore((s) => s.isDirty);
@@ -29,6 +30,7 @@ export function ProjectHeader({ onExport }: Props) {
   const [editValue, setEditValue] = useState(projectName);
   const [saving, setSaving] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   // Global undo/redo keyboard shortcuts
   useEffect(() => {
@@ -63,6 +65,55 @@ export function ProjectHeader({ onExport }: Props) {
       isDirty: true,
     });
     setShowTemplatePicker(false);
+  };
+
+  const exportProjectFile = () => {
+    const state = useStudioStore.getState();
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      project: {
+        projectId: state.projectId,
+        projectName: state.projectName,
+        template: state.template,
+        audioSrc: state.audioSrc,
+        videoSrc: state.videoSrc,
+        videoFit: state.videoFit,
+        videoVolume: state.videoVolume,
+        durationInFrames: state.durationInFrames,
+        overlays: state.overlays,
+        selectedOverlayId: null,
+        isDirty: true,
+        lastSaved: null,
+        backgroundColor: state.backgroundColor,
+        backgroundOpacity: state.backgroundOpacity,
+        inMarker: state.inMarker,
+        outMarker: state.outMarker,
+        timelineRegions: state.timelineRegions,
+        exportSettings: state.exportSettings,
+      },
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${state.projectName.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "kbeats-project"}.kbeats`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importProjectFile = async (file: File) => {
+    const text = await file.text();
+    const parsed = JSON.parse(text) as { project?: Template & Record<string, unknown> } | Record<string, unknown>;
+    const project = "project" in parsed && parsed.project ? parsed.project : parsed;
+    const current = useStudioStore.getState();
+    loadProject({
+      ...current,
+      ...(project as Parameters<typeof loadProject>[0]),
+      projectId: current.projectId,
+      isDirty: true,
+      lastSaved: null,
+    });
   };
 
   // Group templates by platform
@@ -196,7 +247,39 @@ export function ProjectHeader({ onExport }: Props) {
       </div>
 
       {/* Right: Save + Export */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
+        <input
+          ref={importRef}
+          type="file"
+          accept=".kbeats,application/json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void importProjectFile(file);
+            e.currentTarget.value = "";
+          }}
+        />
+        <button
+          onClick={onShowShortcuts}
+          title="Keyboard shortcuts"
+          className="p-1.5 rounded text-[#F7F6E5] hover:text-white transition-colors"
+        >
+          <Keyboard size={14} />
+        </button>
+        <button
+          onClick={() => importRef.current?.click()}
+          title="Import .kbeats project"
+          className="p-1.5 rounded text-[#F7F6E5] hover:text-white transition-colors"
+        >
+          <FileUp size={14} />
+        </button>
+        <button
+          onClick={exportProjectFile}
+          title="Export .kbeats project"
+          className="p-1.5 rounded text-[#F7F6E5] hover:text-white transition-colors"
+        >
+          <FileDown size={14} />
+        </button>
         {/* Save button */}
         <button
           onClick={async () => {
@@ -243,7 +326,7 @@ export function ProjectHeader({ onExport }: Props) {
           }}
         >
           <Download size={12} />
-          Export MP4
+          Export
         </button>
       </div>
     </header>

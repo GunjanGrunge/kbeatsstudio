@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
-  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, Film, LucideProps
+  Eye, EyeOff, Trash2, Copy, GripVertical, Music2, PlayCircle, Camera, Waves, Type, Image, Sparkles, Film, PencilRuler, LucideProps
 } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
 import type { OverlayConfig, OverlayType } from "@/types/studio";
@@ -22,6 +22,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ComponentType<LucideProps>> = {
   image: Image,
   "video-clip": Film,
   "motion-background": Sparkles,
+  annotation: PencilRuler,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
@@ -37,6 +38,7 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   image: "#F7F6E5",
   "video-clip": "#66aaff",
   "motion-background": "#aa44ff",
+  annotation: "#ccff00",
 };
 
 function OverlayItem({ overlay, isSelected }: { overlay: OverlayConfig; isSelected: boolean }) {
@@ -133,6 +135,7 @@ export function OverlayList() {
     { type: "text", label: "Text" },
     { type: "image", label: "Image / Logo" },
     { type: "video-clip", label: "Video Clip" },
+    { type: "annotation", label: "Annotation" },
   ];
 
   // The list is displayed in reverse (top layer first), so when Framer

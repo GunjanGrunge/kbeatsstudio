@@ -29,6 +29,7 @@ export function ExportModal({ open, onClose }: Props) {
   const audioSrc = useStudioStore((s) => s.audioSrc);
   const videoSrc = useStudioStore((s) => s.videoSrc);
   const videoFit = useStudioStore((s) => s.videoFit);
+  const videoVolume = useStudioStore((s) => s.videoVolume);
   const durationInFrames = useStudioStore((s) => s.durationInFrames);
   const overlays = useStudioStore((s) => s.overlays);
   const backgroundColor = useStudioStore((s) => s.backgroundColor);
@@ -37,6 +38,8 @@ export function ExportModal({ open, onClose }: Props) {
   const outMarker = useStudioStore((s) => s.outMarker);
   const setInMarker = useStudioStore((s) => s.setInMarker);
   const setOutMarker = useStudioStore((s) => s.setOutMarker);
+  const exportSettings = useStudioStore((s) => s.exportSettings);
+  const updateExportSettings = useStudioStore((s) => s.updateExportSettings);
 
   const fps = template.fps;
   const totalSecs = durationInFrames / fps;
@@ -105,6 +108,8 @@ export function ExportModal({ open, onClose }: Props) {
   const trimDuration = Math.max(1, trimEnd - trimStart);
   const trimFrames = Math.round(trimDuration * fps);
   const startFrame = Math.round(trimStart * fps);
+  const outputWidth = Math.round(selectedTemplate.width * exportSettings.scale);
+  const outputHeight = Math.round(selectedTemplate.height * exportSettings.scale);
 
   function commitTrimStart(val: string) {
     const s = parseTime(val);
@@ -137,6 +142,7 @@ export function ExportModal({ open, onClose }: Props) {
       audioSrc,
       videoSrc,
       videoFit,
+      videoVolume,
       durationInFrames: trimFrames,
       fps,
       width: selectedTemplate.width,
@@ -152,6 +158,10 @@ export function ExportModal({ open, onClose }: Props) {
           ? { containerWidth: Math.round(o.containerWidth * widthScale) }
           : {}),
       })),
+      timelineRegions: useStudioStore.getState().timelineRegions.map((r) => ({
+        ...r,
+        startFrame: Math.max(0, r.startFrame - startFrame),
+      })),
     };
 
     try {
@@ -160,7 +170,11 @@ export function ExportModal({ open, onClose }: Props) {
         headers: { "Content-Type": "application/json" },
         // No frameRange — composition durationInFrames is already trimmed,
         // Lambda renders frames 0..trimFrames-1 by default
-        body: JSON.stringify({ inputProps, projectId }),
+        body: JSON.stringify({
+          inputProps,
+          projectId,
+          exportSettings: { ...exportSettings, width: outputWidth, height: outputHeight },
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to start render");
@@ -197,7 +211,7 @@ export function ExportModal({ open, onClose }: Props) {
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2" style={{ fontFamily: "Unbounded, sans-serif", fontSize: "0.9rem" }}>
             <Download size={16} className="text-[#ccff00]" />
-            Export MP4
+            Export
           </DialogTitle>
         </DialogHeader>
 
@@ -251,6 +265,97 @@ export function ExportModal({ open, onClose }: Props) {
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>
+                  Output
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["mp4", "gif"] as const).map((format) => (
+                    <button
+                      key={format}
+                      className="rounded-lg border px-3 py-2 text-xs uppercase transition-colors"
+                      style={{
+                        fontFamily: "Unbounded, sans-serif",
+                        background: exportSettings.format === format ? "#ccff00" : "rgba(255,255,255,0.03)",
+                        borderColor: exportSettings.format === format ? "#ccff00" : "rgba(255,255,255,0.08)",
+                        color: exportSettings.format === format ? "#050505" : "#F7F6E5",
+                      }}
+                      onClick={() => updateExportSettings({ format })}
+                    >
+                      {format}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["draft", "standard", "high"] as const).map((quality) => (
+                    <button
+                      key={quality}
+                      className="rounded border py-1.5 text-[10px] capitalize"
+                      style={{
+                        fontFamily: "Outfit, sans-serif",
+                        background: exportSettings.quality === quality ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.03)",
+                        borderColor: exportSettings.quality === quality ? "rgba(204,255,0,0.45)" : "rgba(255,255,255,0.06)",
+                        color: exportSettings.quality === quality ? "#ccff00" : "#777",
+                      }}
+                      onClick={() => updateExportSettings({ quality })}
+                    >
+                      {quality}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([1, 0.75, 0.5] as const).map((scale) => (
+                    <button
+                      key={scale}
+                      className="rounded border py-1.5 text-[10px]"
+                      style={{
+                        fontFamily: "Outfit, sans-serif",
+                        background: exportSettings.scale === scale ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.03)",
+                        borderColor: exportSettings.scale === scale ? "rgba(204,255,0,0.45)" : "rgba(255,255,255,0.06)",
+                        color: exportSettings.scale === scale ? "#ccff00" : "#777",
+                      }}
+                      onClick={() => updateExportSettings({ scale })}
+                    >
+                      {Math.round(scale * 100)}%
+                    </button>
+                  ))}
+                </div>
+                {exportSettings.format === "gif" && (
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {([12, 15, 24, 30] as const).map((gifFps) => (
+                      <button
+                        key={gifFps}
+                        className="rounded border py-1.5 text-[10px]"
+                        style={{
+                          fontFamily: "Outfit, sans-serif",
+                          background: exportSettings.gifFps === gifFps ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.03)",
+                          borderColor: exportSettings.gifFps === gifFps ? "rgba(204,255,0,0.45)" : "rgba(255,255,255,0.06)",
+                          color: exportSettings.gifFps === gifFps ? "#ccff00" : "#777",
+                        }}
+                        onClick={() => updateExportSettings({ gifFps })}
+                      >
+                        {gifFps}fps
+                      </button>
+                    ))}
+                    <button
+                      className="rounded border py-1.5 text-[10px]"
+                      style={{
+                        fontFamily: "Outfit, sans-serif",
+                        background: exportSettings.gifLoop ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.03)",
+                        borderColor: exportSettings.gifLoop ? "rgba(204,255,0,0.45)" : "rgba(255,255,255,0.06)",
+                        color: exportSettings.gifLoop ? "#ccff00" : "#777",
+                      }}
+                      onClick={() => updateExportSettings({ gifLoop: !exportSettings.gifLoop })}
+                    >
+                      Loop
+                    </button>
+                  </div>
+                )}
+                <p className="text-[10px] text-[#666]" style={{ fontFamily: "Outfit, sans-serif" }}>
+                  {outputWidth}×{outputHeight} · {exportSettings.format.toUpperCase()}
+                </p>
               </div>
 
               {/* Trim section */}
@@ -380,11 +485,11 @@ export function ExportModal({ open, onClose }: Props) {
 
               {/* Export info */}
               <div className="p-3 rounded-lg bg-[rgba(0,0,0,0.3)] border border-[#222222] text-[10px] text-[#555555] space-y-1" style={{ fontFamily: "Outfit, sans-serif" }}>
-                <div className="flex justify-between"><span>Format</span><span className="text-white">{selectedTemplate.width}×{selectedTemplate.height}</span></div>
+                <div className="flex justify-between"><span>Format</span><span className="text-white">{outputWidth}×{outputHeight}</span></div>
                 <div className="flex justify-between"><span>Duration</span><span className="text-white">{fmtSec(Math.round(trimDuration))}</span></div>
-                <div className="flex justify-between"><span>FPS</span><span className="text-white">{selectedTemplate.fps}</span></div>
+                <div className="flex justify-between"><span>FPS</span><span className="text-white">{exportSettings.format === "gif" ? exportSettings.gifFps : selectedTemplate.fps}</span></div>
                 <div className="flex justify-between"><span>Overlays</span><span className="text-white">{overlays.filter((o) => o.visible).length}</span></div>
-                <div className="flex justify-between"><span>Codec</span><span className="text-white">H.264</span></div>
+                <div className="flex justify-between"><span>Codec</span><span className="text-white">{exportSettings.format === "gif" ? "GIF" : "H.264"}</span></div>
               </div>
             </>
           )}

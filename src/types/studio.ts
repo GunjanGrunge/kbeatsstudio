@@ -56,7 +56,49 @@ export type OverlayType =
   | "text"
   | "image"
   | "video-clip"
-  | "motion-background";
+  | "motion-background"
+  | "annotation";
+
+export type AnnotationKind = "arrow" | "shape" | "highlight" | "label";
+export type AnnotationShape = "rect" | "ellipse";
+
+export interface AnnotationConfig {
+  kind: AnnotationKind;
+  shape?: AnnotationShape;
+  text?: string;
+  width: number; // percentage of canvas width
+  height: number; // percentage of canvas height
+  rotation: number;
+  strokeWidth: number;
+  fillColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  arrowDirection?: "right" | "left" | "up" | "down";
+  cornerRadius?: number;
+}
+
+export type TimelineRegionType = "speed" | "audio" | "crop";
+
+export interface TimelineRegion {
+  id: string;
+  type: TimelineRegionType;
+  label: string;
+  startFrame: number;
+  durationInFrames: number;
+  color: string;
+  speed?: number;
+  audioSrc?: string;
+  volume?: number;
+  crop?: { x: number; y: number; width: number; height: number };
+}
+
+export interface ExportSettings {
+  format: "mp4" | "gif";
+  quality: "draft" | "standard" | "high";
+  gifFps: 12 | 15 | 24 | 30;
+  gifLoop: boolean;
+  scale: 0.5 | 0.75 | 1;
+}
 
 export type Platform = "youtube" | "instagram";
 
@@ -179,6 +221,8 @@ export interface OverlayConfig {
   animationVariant?: SubscribeVariant | LikeVariant | LyricsVariant | ImageVariant | TextVariant;
   // Motion background config (motion-background overlay type)
   motionBg?: MotionBgConfig;
+  // Annotation config
+  annotation?: AnnotationConfig;
 }
 
 export interface ProjectState {
@@ -188,7 +232,9 @@ export interface ProjectState {
   audioSrc: string | null; // S3 HTTPS URL
   videoSrc: string | null; // S3 HTTPS URL
   videoFit: "cover" | "contain" | "fill"; // how the video fills the canvas
+  videoVolume: number; // 0-1, controls source video audio
   durationInFrames: number;
+  bpm: number | null; // beats per minute for beat-sync snapping
   overlays: OverlayConfig[];
   selectedOverlayId: string | null;
   isDirty: boolean;
@@ -197,6 +243,8 @@ export interface ProjectState {
   backgroundOpacity: number; // 0-1
   inMarker: number | null;   // frame number for export in point
   outMarker: number | null;  // frame number for export out point
+  timelineRegions: TimelineRegion[];
+  exportSettings: ExportSettings;
 }
 
 export interface ProjectIndex {
@@ -222,6 +270,7 @@ export interface KBeatsInputProps {
   audioSrc: string | null;
   videoSrc: string | null;
   videoFit: "cover" | "contain" | "fill";
+  videoVolume?: number;
   durationInFrames: number;
   fps: number;
   width: number;
@@ -229,6 +278,7 @@ export interface KBeatsInputProps {
   backgroundColor: string;
   backgroundOpacity: number;
   overlays: OverlayConfig[];
+  timelineRegions?: TimelineRegion[];
   /** Frame offset into audio/video to start playback from (for trim) */
   trimStartFrame?: number;
 }

@@ -16,6 +16,7 @@ import { VideoClipControls } from "@/components/controls/VideoClipControls";
 import { AnimationVariantControl, LYRICS_VARIANTS, IMAGE_VARIANTS, TEXT_VARIANTS } from "@/components/controls/AnimationVariantControl";
 import { TextStyleEditor } from "@/components/controls/TextStyleEditor";
 import { MotionBackgroundControl } from "@/components/controls/MotionBackgroundControl";
+import { AnnotationControls } from "@/components/controls/AnnotationControls";
 import { Slider } from "@/components/ui/slider";
 import { HexColorPicker } from "react-colorful";
 import { useState } from "react";
@@ -98,6 +99,7 @@ export function ControlsPanel() {
   const showVideoClipControls = overlay?.type === "video-clip";
   const showVideoClipAnimation = overlay?.type === "video-clip";
   const showTextAnimation = overlay?.type === "text";
+  const showAnnotationControls = overlay?.type === "annotation";
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#0d0d0d", minHeight: 0 }}>
@@ -193,6 +195,12 @@ export function ControlsPanel() {
                     defaultVariant="none"
                     sectionLabel="Animation Style"
                   />
+                </div>
+              )}
+
+              {showAnnotationControls && (
+                <div className="px-4 py-4 border-b" style={{ borderColor: "#1a1a1c" }}>
+                  <AnnotationControls overlayId={overlay.id} />
                 </div>
               )}
 

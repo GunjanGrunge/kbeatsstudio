@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { KBeatsInputProps, OverlayConfig } from "@/types/studio";
+import type { ExportSettings, KBeatsInputProps, OverlayConfig } from "@/types/studio";
 import { getPresignedDownloadUrl, BUCKET } from "@/lib/s3Client";
 
 export const runtime = "nodejs";
@@ -32,14 +32,26 @@ async function presignOverlays(overlays: OverlayConfig[]): Promise<OverlayConfig
   );
 }
 
+async function presignTimelineRegions(regions: KBeatsInputProps["timelineRegions"] = []): Promise<KBeatsInputProps["timelineRegions"]> {
+  return Promise.all(
+    regions.map(async (region) => {
+      if (region.type === "audio" && region.audioSrc) {
+        return { ...region, audioSrc: await presignIfPrivate(region.audioSrc) ?? region.audioSrc };
+      }
+      return region;
+    })
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { inputProps, projectId, codec = "h264", frameRange } = body as {
+    const { inputProps, projectId, codec, frameRange, exportSettings } = body as {
       inputProps: KBeatsInputProps;
       projectId: string;
       codec?: string;
       frameRange?: [number, number];
+      exportSettings?: ExportSettings & { width?: number; height?: number };
     };
 
     const functionName = process.env.REMOTION_LAMBDA_FUNCTION_NAME;
@@ -53,10 +65,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Presign any private S3 URLs so Lambda can fetch them during render
-    const [audioSrc, videoSrc, presignedOverlays] = await Promise.all([
+    const [audioSrc, videoSrc, presignedOverlays, presignedTimelineRegions] = await Promise.all([
       presignIfPrivate(inputProps.audioSrc),
       presignIfPrivate(inputProps.videoSrc),
       presignOverlays(inputProps.overlays),
+      presignTimelineRegions(inputProps.timelineRegions),
     ]);
 
     const resolvedProps: KBeatsInputProps = {
@@ -64,10 +77,18 @@ export async function POST(req: NextRequest) {
       audioSrc,
       videoSrc,
       overlays: presignedOverlays,
+      timelineRegions: presignedTimelineRegions,
     };
 
     // Dynamic import — keeps @remotion/lambda out of the client bundle
     const { renderMediaOnLambda } = await import("@remotion/lambda/client");
+
+    const format = exportSettings?.format ?? "mp4";
+    const outputFileName = `${projectId}-${Date.now()}.${format}`;
+    const jpegQuality = exportSettings?.quality === "draft" ? 70 : exportSettings?.quality === "standard" ? 86 : 95;
+    const scale = exportSettings?.scale ?? 1;
+    const framesPerLambda = exportSettings?.quality === "draft" ? 40 : 20;
+    const resolvedCodec = codec ?? (format === "gif" ? "gif" : "h264");
 
     const { renderId, bucketName } = await renderMediaOnLambda({
       region: (process.env.AWS_REGION as "us-east-1") ?? "us-east-1",
@@ -75,13 +96,17 @@ export async function POST(req: NextRequest) {
       serveUrl,
       composition: "KBeatsMain",
       inputProps: resolvedProps as unknown as Record<string, unknown>,
-      codec: codec as "h264",
+      codec: resolvedCodec as "h264",
+      privacy: "no-acl",
+      downloadBehavior: { type: "download", fileName: outputFileName },
       imageFormat: "jpeg",
-      jpegQuality: 95,
-      outName: `renders/${projectId}/output-${Date.now()}.mp4`,
+      jpegQuality,
+      outName: `renders/${projectId}/${outputFileName}`,
       logLevel: "error",
       timeoutInMilliseconds: 60000, // 60s per delayRender call (e.g. audio decode)
       maxRetries: 2,
+      framesPerLambda,
+      scale,
       ...(frameRange ? { frameRange } : {}),
     });
 

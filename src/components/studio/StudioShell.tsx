@@ -11,6 +11,7 @@ import { PreviewPanel } from "./PreviewPanel";
 import { ControlsPanel } from "./ControlsPanel";
 import { ExportModal } from "./ExportModal";
 import { TimelinePanel } from "./TimelinePanel";
+import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import type { ProjectState } from "@/types/studio";
 
 export { sharedFrameRef } from "@/lib/sharedRefs";
@@ -24,6 +25,7 @@ interface Props {
 export function StudioShell({ projectId, initialState }: Props) {
   const playerRef = useRef<PlayerRef | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const loadProject = useStudioStore((s) => s.loadProject);
   const setCurrentFrameStore = useStudioStore((s) => s.setCurrentFrame);
@@ -92,6 +94,18 @@ export function StudioShell({ projectId, initialState }: Props) {
     if (e.code === "Escape") {
       useStudioStore.getState().selectOverlay(null);
     }
+    if (e.key === "?" && e.target === document.body) {
+      e.preventDefault();
+      setShortcutsOpen(true);
+    }
+    if (e.key.toLowerCase() === "i" && e.target === document.body) {
+      const state = useStudioStore.getState();
+      state.setInMarker(state.inMarker === null ? sharedFrameRef.current : null);
+    }
+    if (e.key.toLowerCase() === "o" && e.target === document.body) {
+      const state = useStudioStore.getState();
+      state.setOutMarker(state.outMarker === null ? sharedFrameRef.current : null);
+    }
   }, []);
 
   useEffect(() => {
@@ -102,7 +116,7 @@ export function StudioShell({ projectId, initialState }: Props) {
   return (
     <div className="flex flex-col h-screen bg-[#050505] overflow-hidden">
       {/* Top bar */}
-      <ProjectHeader onExport={() => setExportOpen(true)} />
+      <ProjectHeader onExport={() => setExportOpen(true)} onShowShortcuts={() => setShortcutsOpen(true)} />
 
       {/* Main area: 3-pane + bottom timeline */}
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -137,6 +151,7 @@ export function StudioShell({ projectId, initialState }: Props) {
 
       {/* Export modal */}
       <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
+      <KeyboardShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }
