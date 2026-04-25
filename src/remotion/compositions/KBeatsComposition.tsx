@@ -70,6 +70,7 @@ export function KBeatsComposition({
   overlays,
   timelineRegions = [],
   trimStartFrame = 0,
+  videoCrop,
 }: KBeatsInputProps) {
   const { durationInFrames } = useVideoConfig();
 
@@ -88,6 +89,7 @@ export function KBeatsComposition({
         opacity={1}
         startFrom={trimStartFrame}
         timelineRegions={timelineRegions}
+        videoCrop={videoCrop}
       />
 
       {/* Audio track (invisible) */}

@@ -2,8 +2,9 @@
 
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Music, Video, X, CheckCircle, Volume2, VolumeX } from "lucide-react";
+import { Upload, Music, Video, X, CheckCircle, Volume2, VolumeX, Crop } from "lucide-react";
 import { useStudioStore } from "@/store/studioStore";
+import { Slider } from "@/components/ui/slider";
 
 export function UploadZone() {
   const projectId = useStudioStore((s) => s.projectId);
@@ -15,6 +16,9 @@ export function UploadZone() {
   const setVideoFit = useStudioStore((s) => s.setVideoFit);
   const videoVolume = useStudioStore((s) => s.videoVolume);
   const setVideoVolume = useStudioStore((s) => s.setVideoVolume);
+  const videoCrop = useStudioStore((s) => s.videoCrop);
+  const setVideoCrop = useStudioStore((s) => s.setVideoCrop);
+  const [showCrop, setShowCrop] = useState(false);
 
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -171,6 +175,53 @@ export function UploadZone() {
                 <span className="w-8 text-right text-[9px] text-[#666]" style={{ fontFamily: "Outfit, sans-serif" }}>
                   {Math.round(videoVolume * 100)}%
                 </span>
+              </div>
+              {/* Crop toggle */}
+              <div className="pt-1">
+                <button
+                  className="flex items-center gap-1.5 text-[9px] transition-colors w-full"
+                  style={{
+                    fontFamily: "Outfit, sans-serif",
+                    color: showCrop ? "#ccff00" : "#555555",
+                  }}
+                  onClick={() => setShowCrop((v) => !v)}
+                >
+                  <Crop size={10} />
+                  <span>Crop background video</span>
+                  {videoCrop && <span className="ml-auto text-[#ccff00]">active</span>}
+                </button>
+                {showCrop && (
+                  <div className="mt-2 space-y-2 pl-1">
+                    {(["x", "y", "width", "height"] as const).map((key) => {
+                      const crop = videoCrop ?? { x: 0, y: 0, width: 100, height: 100 };
+                      const labels: Record<string, string> = { x: "Left", y: "Top", width: "Width", height: "Height" };
+                      return (
+                        <div key={key} className="space-y-0.5">
+                          <div className="flex justify-between text-[9px] text-[#999]" style={{ fontFamily: "Outfit, sans-serif" }}>
+                            <span>{labels[key]}</span>
+                            <span>{Math.round(crop[key])}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0} max={100} step={1}
+                            value={crop[key]}
+                            onChange={(e) => setVideoCrop({ ...crop, [key]: Number(e.target.value) })}
+                            className="w-full"
+                          />
+                        </div>
+                      );
+                    })}
+                    {videoCrop && (
+                      <button
+                        className="text-[9px] text-[#555] hover:text-red-400 transition-colors"
+                        style={{ fontFamily: "Outfit, sans-serif" }}
+                        onClick={() => setVideoCrop(null)}
+                      >
+                        Reset crop
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -229,6 +229,44 @@ export function VideoClipControls({ overlayId }: Props) {
         </p>
       </div>
 
+      {/* Crop */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#555555]" style={{ fontFamily: "Unbounded, sans-serif" }}>Crop</p>
+          {overlay.videoClipCrop && (
+            <button
+              className="text-[9px] text-[#666] hover:text-red-400 transition-colors"
+              style={{ fontFamily: "Outfit, sans-serif" }}
+              onClick={() => updateOverlay(overlayId, { videoClipCrop: undefined })}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        {(["x", "y", "width", "height"] as const).map((key) => {
+          const crop = overlay.videoClipCrop ?? { x: 0, y: 0, width: 100, height: 100 };
+          const labels: Record<string, string> = { x: "Left", y: "Top", width: "Width", height: "Height" };
+          return (
+            <div key={key} className="space-y-1">
+              <div className="flex justify-between text-[10px] text-[#F7F6E5]" style={{ fontFamily: "Outfit, sans-serif" }}>
+                <span>{labels[key]}</span>
+                <span>{Math.round(crop[key])}%</span>
+              </div>
+              <Slider
+                min={0} max={100} step={1}
+                value={[crop[key]]}
+                onValueChange={(vals) => updateOverlay(overlayId, {
+                  videoClipCrop: { ...crop, [key]: (vals as number[])[0] },
+                })}
+              />
+            </div>
+          );
+        })}
+        <p className="text-[9px] text-[#555555]" style={{ fontFamily: "Outfit, sans-serif" }}>
+          Crop the video clip to a region (% of video size)
+        </p>
+      </div>
+
       <input
         ref={inputRef}
         type="file"

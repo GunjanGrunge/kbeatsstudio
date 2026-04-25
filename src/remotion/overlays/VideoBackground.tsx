@@ -10,6 +10,7 @@ interface Props {
   backgroundOpacity?: number;
   startFrom?: number;
   timelineRegions?: TimelineRegion[];
+  videoCrop?: { x: number; y: number; width: number; height: number } | null;
 }
 
 interface Segment {
@@ -71,6 +72,7 @@ export function VideoBackground({
   backgroundOpacity = 1,
   startFrom = 0,
   timelineRegions = [],
+  videoCrop = null,
 }: Props) {
   const { durationInFrames } = useVideoConfig();
   const segments = buildVideoSegments(durationInFrames, startFrom, timelineRegions);
@@ -102,7 +104,7 @@ export function VideoBackground({
                   height: "100%",
                   objectFit: videoFit,
                   opacity,
-                  ...cropStyle(segment.crop),
+                  ...cropStyle(segment.crop ?? videoCrop ?? undefined),
                 }}
               />
             </AbsoluteFill>

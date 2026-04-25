@@ -41,6 +41,7 @@ interface StudioActions {
   setBackgroundOpacity: (opacity: number) => void;
   setVideoFit: (fit: "cover" | "contain" | "fill") => void;
   setVideoVolume: (volume: number) => void;
+  setVideoCrop: (crop: { x: number; y: number; width: number; height: number } | null) => void;
   markSaved: () => void;
 
   // Undo / Redo
@@ -101,6 +102,7 @@ const DEFAULT_STATE: ProjectState = {
   videoSrc: null,
   videoFit: "cover",
   videoVolume: 0,
+  videoCrop: null,
   durationInFrames: 900, // 30s at 30fps
   bpm: null,
   overlays: [],
@@ -405,6 +407,12 @@ export const useStudioStore = create<StudioStore>()(
       setVideoVolume: (volume) =>
         set((state) => {
           state.videoVolume = Math.max(0, Math.min(1, volume));
+          state.isDirty = true;
+        }),
+
+      setVideoCrop: (crop) =>
+        set((state) => {
+          state.videoCrop = crop;
           state.isDirty = true;
         }),
 
@@ -756,6 +764,7 @@ export const useStudioStore = create<StudioStore>()(
         videoSrc: state.videoSrc,
         videoFit: state.videoFit,
         videoVolume: state.videoVolume,
+        videoCrop: state.videoCrop,
         durationInFrames: state.durationInFrames,
         overlays: state.overlays,
         backgroundColor: state.backgroundColor,
@@ -772,6 +781,7 @@ export const useStudioStore = create<StudioStore>()(
         ...(persisted as Partial<ProjectState>),
         timelineRegions: (persisted as Partial<ProjectState>)?.timelineRegions ?? [],
         videoVolume: (persisted as Partial<ProjectState>)?.videoVolume ?? DEFAULT_STATE.videoVolume,
+        videoCrop: (persisted as Partial<ProjectState>)?.videoCrop ?? DEFAULT_STATE.videoCrop,
         bpm: (persisted as Partial<ProjectState>)?.bpm ?? DEFAULT_STATE.bpm,
         exportSettings: {
           ...DEFAULT_STATE.exportSettings,

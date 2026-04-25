@@ -5,6 +5,19 @@ interface Props {
   overlay: OverlayConfig;
 }
 
+function clipCropStyle(crop: NonNullable<OverlayConfig["videoClipCrop"]>): React.CSSProperties {
+  // Scale the video so the cropped region fills the container
+  const scaleX = 100 / Math.max(1, crop.width);
+  const scaleY = 100 / Math.max(1, crop.height);
+  const scale = Math.min(scaleX, scaleY);
+  const offsetX = -(crop.x / 100) * scale * 100;
+  const offsetY = -(crop.y / 100) * scale * 100;
+  return {
+    transform: `translate(${offsetX}%, ${offsetY}%) scale(${scale})`,
+    transformOrigin: "0 0",
+  };
+}
+
 export function VideoClipOverlay({ overlay }: Props) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -19,6 +32,7 @@ export function VideoClipOverlay({ overlay }: Props) {
   const scale = overlay.componentScale ?? 1;
   const fit = overlay.videoClipFit ?? "none";
   const volume = overlay.videoClipVolume ?? 0;
+  const crop = overlay.videoClipCrop;
 
   // Entrance spring for animation variant
   const sp = spring({ frame, fps, config: { damping: 14, stiffness: 120, mass: 0.8 } });
@@ -26,7 +40,7 @@ export function VideoClipOverlay({ overlay }: Props) {
   // Full-canvas fit modes
   if (fit !== "none") {
     return (
-      <AbsoluteFill style={{ opacity: alpha }}>
+      <AbsoluteFill style={{ opacity: alpha, overflow: "hidden" }}>
         <OffthreadVideo
           src={overlay.videoClipSrc}
           volume={volume}
@@ -34,6 +48,7 @@ export function VideoClipOverlay({ overlay }: Props) {
             width: "100%",
             height: "100%",
             objectFit: fit,
+            ...(crop ? clipCropStyle(crop) : {}),
           }}
         />
       </AbsoluteFill>
@@ -81,6 +96,7 @@ export function VideoClipOverlay({ overlay }: Props) {
           width,
           height: "auto",
           display: "block",
+          ...(crop ? clipCropStyle(crop) : {}),
         }}
       />
     </div>

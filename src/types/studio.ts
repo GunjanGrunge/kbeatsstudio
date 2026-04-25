@@ -197,6 +197,7 @@ export interface OverlayConfig {
   videoClipSrc?: string;
   videoClipFit?: "none" | "contain" | "cover" | "fill";
   videoClipVolume?: number; // 0–1, default 0 (muted)
+  videoClipCrop?: { x: number; y: number; width: number; height: number }; // % of video dimensions
   // For waveform
   waveformColor?: string;
   waveformBars?: number;
@@ -233,6 +234,7 @@ export interface ProjectState {
   videoSrc: string | null; // S3 HTTPS URL
   videoFit: "cover" | "contain" | "fill"; // how the video fills the canvas
   videoVolume: number; // 0-1, controls source video audio
+  videoCrop?: { x: number; y: number; width: number; height: number } | null; // static crop % for bg video
   durationInFrames: number;
   bpm: number | null; // beats per minute for beat-sync snapping
   overlays: OverlayConfig[];
@@ -271,6 +273,7 @@ export interface KBeatsInputProps {
   videoSrc: string | null;
   videoFit: "cover" | "contain" | "fill";
   videoVolume?: number;
+  videoCrop?: { x: number; y: number; width: number; height: number } | null;
   durationInFrames: number;
   fps: number;
   width: number;
